@@ -15,6 +15,7 @@ end
 
 function love.load()
     player = Player.new(1.5 * Map.tileSize, 1.5 * Map.tileSize, 0)
+    Raycaster.load()
     setMouseCaptured(true)
 end
 
