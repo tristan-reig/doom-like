@@ -1,0 +1,10 @@
+# Builds LÖVE
+*.love
+build/
+dist/
+
+# Éditeurs / système
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
