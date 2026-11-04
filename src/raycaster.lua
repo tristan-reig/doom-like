@@ -3,6 +3,9 @@ local Map = require("src.map")
 local Raycaster = {}
 
 Raycaster.fov = math.rad(66)
+Raycaster.fadeDist = 900     -- distance à laquelle l'assombrissement est maximal
+
+local floorShader -- shader du sol et du plafond, créé dans Raycaster.load()
 
 -- Lance un rayon depuis (px, py) dans la direction "angle".
 function Raycaster.castRay(px, py, angle)
@@ -96,6 +99,35 @@ function Raycaster.load()
 
         textures[id] = { image = img, quads = quads, width = tw, height = th }
     end
+
+    local function loadFlat(path)
+        local img = love.graphics.newImage(path)
+        img:setFilter("nearest", "nearest")
+        img:setWrap("repeat", "repeat")
+        return img
+    end
+
+    floorShader = love.graphics.newShader("src/shaders/floor.glsl")
+    floorShader:send("floorTex", loadFlat("assets/textures/floor4_8.png"))
+    floorShader:send("ceilTex", loadFlat("assets/textures/ceil3_5.png"))
+    floorShader:send("camHeight", Map.tileSize / 2)
+    floorShader:send("tileSize", Map.tileSize)
+    floorShader:send("fadeDist", Raycaster.fadeDist)
+end
+
+-- Dessine le sol et le plafond en une seule fois grâce au shader
+local function drawFloorAndCeiling(player, w, h, projDist)
+    local cos, sin = math.cos(player.angle), math.sin(player.angle)
+    floorShader:send("playerPos", { player.x, player.y })
+    floorShader:send("forward", { cos, sin })
+    floorShader:send("right", { -sin, cos })
+    floorShader:send("projDist", projDist)
+    floorShader:send("halfScreen", { w / 2, h / 2 })
+
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setShader(floorShader)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    love.graphics.setShader()
 end
 
 -- Dessine la vue 3D
@@ -105,11 +137,8 @@ function Raycaster.draw(player)
 
     local projDist = halfW / math.tan(Raycaster.fov / 2)
 
-    -- Plafond et sol
-    love.graphics.setColor(0.20, 0.18, 0.16)
-    love.graphics.rectangle("fill", 0, 0, w, halfH)
-    love.graphics.setColor(0.30, 0.27, 0.22)
-    love.graphics.rectangle("fill", 0, halfH, w, halfH)
+    -- Plafond et sol texturés
+    drawFloorAndCeiling(player, w, h, projDist)
 
     for x = 0, w - 1 do
         local offset = math.atan((x - halfW) / projDist)
