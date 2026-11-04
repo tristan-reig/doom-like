@@ -1,6 +1,7 @@
 local Map = require("src.map")
 local Player = require("src.player")
 local Raycaster = require("src.raycaster")
+local Sprites = require("src.sprites")
 
 local player
 local showMap = true
@@ -16,6 +17,15 @@ end
 function love.load()
     player = Player.new(1.5 * Map.tileSize, 1.5 * Map.tileSize, 0)
     Raycaster.load()
+    Sprites.load()
+
+    Sprites.add("barrel", 5, 2)
+    Sprites.add("barrel", 6, 2)
+    Sprites.add("column", 8, 3)
+    Sprites.add("lamp", 2, 7)
+    Sprites.add("tailLamp", 13, 2)
+    Sprites.add("barrel", 12, 8)
+    Sprites.add("lamp", 5, 5)
     setMouseCaptured(true)
 end
 
@@ -44,16 +54,19 @@ function love.update(dt)
 end
 
 function love.draw()
-    -- 1. La vue 3D
-    Raycaster.draw(player)
+    -- La vue 3D
+    local projDist = Raycaster.draw(player)
 
-    -- 2. La minimap
+    --- Les objets
+    Sprites.draw(player, Raycaster.zbuffer, projDist, Raycaster.fadeDist)
+
+    -- La minimap
     if showMap then
         Map.draw(0.25)
         player:draw(0.25)
     end
 
-    -- 3. Les infos
+    -- Les infos
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 620 - 20)
     love.graphics.print("ZQSD/WASD : bouger   Souris/Flèches : tourner   Tab : minimap   Échap : libérer la souris / quitter", 10, 620)

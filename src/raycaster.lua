@@ -130,6 +130,8 @@ local function drawFloorAndCeiling(player, w, h, projDist)
     love.graphics.setShader()
 end
 
+Raycaster.zbuffer = {}
+
 -- Dessine la vue 3D
 function Raycaster.draw(player)
     local w, h = love.graphics.getDimensions()
@@ -149,6 +151,7 @@ function Raycaster.draw(player)
         -- Correction de l'effet "fish-eye"
         local perpDist = dist * math.cos(offset)
         if perpDist < 0.0001 then perpDist = 0.0001 end
+        Raycaster.zbuffer[x] = perpDist
 
         -- Plus le mur est loin, plus il est petit
         local wallH = Map.tileSize * projDist / perpDist
@@ -172,6 +175,8 @@ function Raycaster.draw(player)
             love.graphics.rectangle("fill", x, top, 1, wallH)
         end
     end
+
+    return projDist
 end
 
 return Raycaster
