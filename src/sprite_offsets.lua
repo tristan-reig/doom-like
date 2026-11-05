@@ -1,4 +1,6 @@
 return {
+    arm1a0 = { 18, 28 },
+    arm1b0 = { 18, 28 },
     bar1a0 = { 11, 30 },
     bexpa0 = { 11, 30 },
     bexpb0 = { 12, 29 },
@@ -7,6 +9,7 @@ return {
     bexpe0 = { 29, 53 },
     col1a0 = { 18, 53 },
     colua0 = { 9, 45 },
+    media0 = { 14, 20 },
     possa1 = { 22, 53 },
     possa2 = { 21, 53 },
     possa3 = { 21, 53 },
@@ -77,5 +80,8 @@ return {
     posss0 = { 32, 19 },
     posst0 = { 32, 13 },
     possu0 = { 33, 12 },
+    sboxa0 = { 17, 12 },
+    shela0 = { 7, 9 },
+    stima0 = { 10, 10 },
     tlmpa0 = { 9, 79 },
 }

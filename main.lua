@@ -5,11 +5,13 @@ local Sprites = require("src.sprites")
 local Weapon = require("src.weapon")
 local Sound = require("src.sound")
 local Hud = require("src.hud")
+local Pickups = require("src.pickups")
 
 local player
 local weapon
 local showMap = true
 local targetInSight = false
+local wasPressingFire = false
 
 local mouseSensitivity = 0.002
 local mouseCaptured = false
@@ -21,6 +23,7 @@ end
 
 local function damagePlayer(amount)
     if player.dead then return end
+    amount = Pickups.absorb(player, amount)
     player.health = math.max(0, player.health - amount)
     Hud.hurt(amount)
     if player.health <= 0 then
@@ -31,12 +34,23 @@ local function damagePlayer(amount)
     end
 end
 
+local function pickUp(kind)
+    local message = Pickups.apply(player, kind)
+    if not message then return false end
+    Sound.play("itemUp")
+    Hud.message(message)
+    return true
+end
+
 function love.load()
     player = Player.new(1.5 * Map.tileSize, 1.5 * Map.tileSize, 0)
     player.health = 100
     player.dead = false
+    player.armor = 0
+    player.ammo = 20
     Hud.load()
     Sprites.onPlayerHit = damagePlayer
+    Sprites.onPickup = pickUp
     Raycaster.load()
     Sprites.load()
     Sound.load()
@@ -50,6 +64,14 @@ function love.load()
     Sprites.add("tallLamp", 13, 2)
     Sprites.add("barrel", 12, 8)
     Sprites.add("lamp", 5, 5)
+
+    -- Placement des collectibles
+    Sprites.add("stimpack", 2, 4)
+    Sprites.add("stimpack", 3, 9)
+    Sprites.add("medikit", 6, 6)
+    Sprites.add("shells", 9, 3)
+    Sprites.add("shellBox", 12, 5)
+    Sprites.add("armor", 14, 9)
 
     -- Placement des zombies
     Sprites.add("zombie", 6.2, 2, math.pi)
@@ -88,7 +110,14 @@ function love.update(dt)
     -- Clic gauche pour tirer
     local wantFire = not player.dead and mouseCaptured
         and (love.mouse.isDown(1) or love.keyboard.isDown("lctrl", "rctrl"))
-    if weapon:update(dt, player, wantFire) then
+
+    if wantFire and player.ammo <= 0 and not weapon.firing and not wasPressingFire then
+        Sound.play("noAmmo")
+    end
+    wasPressingFire = wantFire
+
+    if weapon:update(dt, player, wantFire and player.ammo > 0) then
+        player.ammo = player.ammo - 1
         Sound.play("shotgun")
         Sprites.alert(player) -- le bruit réveille les zombies proches
         for _ = 1, 7 do
@@ -146,9 +175,10 @@ function love.draw()
     -- Les infos
     Hud.draw(player)
 
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 620 - 20)
-    love.graphics.print("ZQSD/WASD : bouger   Souris/Flèches : tourner   Tab : minimap   Échap : libérer la souris / quitter", 10, 620)
+    local w = love.graphics.getWidth()
+    love.graphics.setColor(1, 1, 1, 0.7)
+    love.graphics.printf("FPS: " .. love.timer.getFPS(), 0, 40, w - 10, "right")
+    love.graphics.printf("ZQSD : bouger   Souris : tourner   Clic/Ctrl : tirer\nTab : minimap   Échap : souris / quitter", 0, 58, w - 10, "right")
 end
 
 function love.keypressed(key)

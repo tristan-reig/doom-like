@@ -66,9 +66,18 @@ local typeDefs = {
             },
         },
     },
-    lamp     = { radius = 8, solid = true, states = { idle = { { "colua0", -1 } } } },
+    stimpack = { radius = 10, pickup = "stimpack", states = { idle = { { "stima0", -1 } } } },
+    medikit = { radius = 10, pickup = "medikit",  states = { idle = { { "media0", -1 } } } },
+    shells = { radius = 10, pickup = "shells",   states = { idle = { { "shela0", -1 } } } },
+    shellBox = { radius = 10, pickup = "shellBox", states = { idle = { { "sboxa0", -1 } } } },
+    armor = {
+        radius = 10, pickup = "armor",
+        states = { idle = { { "arm1a0", 6 }, { "arm1b0", 6, bright = true }, loop = true } },
+    },
+
+    lamp = { radius = 8, solid = true, states = { idle = { { "colua0", -1 } } } },
     tallLamp = { radius = 8, solid = true, states = { idle = { { "tlmpa0", -1 } } } },
-    column   = { radius = 8, solid = true, states = { idle = { { "col1a0", -1 } } } },
+    column = { radius = 8, solid = true, states = { idle = { { "col1a0", -1 } } } },
 }
 
 local images = {}
@@ -131,13 +140,18 @@ function Sprites.setState(s, stateName, player)
 end
 
 function Sprites.add(typeName, col, row, angle)
+    return Sprites.spawn(typeName, (col - 0.5) * Map.tileSize, (row - 0.5) * Map.tileSize, angle)
+end
+
+-- Crée un objet en (x, y)
+function Sprites.spawn(typeName, x, y, angle)
     local def = typeDefs[typeName]
     assert(def, "Type de sprite inconnu : " .. tostring(typeName))
 
     local s = {
         type = typeName,
-        x = (col - 0.5) * Map.tileSize,
-        y = (row - 0.5) * Map.tileSize,
+        x = x,
+        y = y,
         angle = angle or 0,
         health = def.health,
         solid = def.solid,
@@ -175,6 +189,19 @@ function Sprites.update(dt, player)
         -- Les monstres en chasse avancent en continu
         if s.state == "chase" and not s.dead and not s.removed then
             AI.move(s, dt, player, Sprites)
+        end
+    end
+
+    -- Le joueur ramasse les objets sur lesquels il marche
+    if not player.dead and Sprites.onPickup then
+        for _, s in ipairs(Sprites.list) do
+            local kind = typeDefs[s.type].pickup
+            if kind and not s.removed then
+                local r = (player.radius or 12) + typeDefs[s.type].radius
+                if (s.x - player.x) ^ 2 + (s.y - player.y) ^ 2 < r * r then
+                    if Sprites.onPickup(kind) then s.removed = true end
+                end
+            end
         end
     end
 
@@ -244,6 +271,7 @@ function Sprites.radiusDamage(source, power, player)
 end
 
 Sprites.onPlayerHit = nil
+Sprites.onPickup = nil
 
 -- Tir instantané depuis le joueur.
 function Sprites.hitscan(player, wallDist, angleOffset)

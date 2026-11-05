@@ -11,6 +11,9 @@ Fichiers (dossier sprites/ de Freedoom) :
   shtga0.png à shtgd0.png  (fusil à pompe)
   shtfa0.png, shtfb0.png   (flash du fusil)
   possa1.png à possu0.png  (zombie)
+  stima0.png, media0.png   (stimpack, trousse de soins)
+  shela0.png, sboxa0.png   (cartouches, boîte de cartouches)
+  arm1a0.png, arm1b0.png   (armure)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 

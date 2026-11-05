@@ -12,6 +12,8 @@ Fichiers (dossier sounds/ de Freedoom) :
   dspistol.wav  (tir du zombie)
   dsplpain.wav  (joueur blessé)
   dspldeth.wav  (mort du joueur)
+  dsitemup.wav  (objet ramassé)
+  dsnoway.wav   (plus de munitions)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 
