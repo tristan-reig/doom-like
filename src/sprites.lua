@@ -339,8 +339,22 @@ local function rotationFor(s, player)
     return idx + 1
 end
 
+-- Quelqu'un se trouve-t-il dans la case (col, row) ?
+function Sprites.cellOccupied(col, row, player)
+    local ts = Map.tileSize
+    local x1, y1 = (col - 1) * ts, (row - 1) * ts
+    local function overlaps(x, y, r)
+        return x + r > x1 and x - r < x1 + ts and y + r > y1 and y - r < y1 + ts
+    end
+    if not player.dead and overlaps(player.x, player.y, player.radius or 12) then return true end
+    for _, s in ipairs(Sprites.list) do
+        if s.solid and overlaps(s.x, s.y, typeDefs[s.type].radius or 8) then return true end
+    end
+    return false
+end
+
 -- Dessine tous les objets.
-function Sprites.draw(player, zbuffer, projDist, fadeDist)
+function Sprites.draw(player, zbuffer, projDist, fadeDist, doorbuffer, pass)
     local w, h = love.graphics.getDimensions()
     local halfW, halfH = w / 2, h / 2
     local camHeight = Map.tileSize / 2
@@ -384,8 +398,14 @@ function Sprites.draw(player, zbuffer, projDist, fadeDist)
         local firstCol = math.max(0, math.floor(left))
         local lastCol = math.min(w - 1, math.ceil(left + spriteW) - 1)
         for sx = firstCol, lastCol do
-            -- L'objet n'est visible dans cette colonne que s'il est devant le mur
-            if v.depth < zbuffer[sx] then
+            local shown = v.depth < zbuffer[sx]
+            local door = doorbuffer and doorbuffer[sx]
+            if pass == "behind" then
+                shown = shown and (not door or v.depth > door)
+            elseif pass == "front" then
+                shown = door and v.depth < door
+            end
+            if shown then
                 local texCol = math.floor((sx - left) / spriteW * t.width)
                 if texCol >= 0 and texCol < t.width then
                     love.graphics.draw(t.image, t.quads[texCol], sx, top, 0, 1, spriteH / t.height)

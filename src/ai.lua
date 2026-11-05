@@ -1,6 +1,7 @@
 local Map = require("src.map")
 local Raycaster = require("src.raycaster")
 local Sound = require("src.sound")
+local Doors = require("src.doors")
 
 local AI = {}
 
@@ -21,13 +22,29 @@ function AI.canSee(s, player)
     return wallDist > dist
 end
 
+-- Vérifie si un mur au point se trouve au point (x, y) ?
+local function wallAt(x, y, ignoreDoors)
+    if ignoreDoors and Map.getTileAt(x, y) == Map.DOOR then return false end
+    return Map.isWall(x, y)
+end
+
+local function doorAt(s, x, y, Sprites)
+    local r = Sprites.getDef(s).radius or 10
+    for _, c in ipairs({ { x - r, y - r }, { x + r, y - r }, { x - r, y + r }, { x + r, y + r } }) do
+        if Map.getTileAt(c[1], c[2]) == Map.DOOR then
+            return Map.cellAt(c[1], c[2])
+        end
+    end
+    return nil
+end
+
 -- La position (x, y) est-elle bloquée ?
-function AI.isBlocked(s, x, y, Sprites, player)
+function AI.isBlocked(s, x, y, Sprites, player, ignoreDoors)
     local r = Sprites.getDef(s).radius or 10
 
     -- Murs
-    if Map.isWall(x - r, y - r) or Map.isWall(x + r, y - r)
-        or Map.isWall(x - r, y + r) or Map.isWall(x + r, y + r) then
+    if wallAt(x - r, y - r, ignoreDoors) or wallAt(x + r, y - r, ignoreDoors)
+        or wallAt(x - r, y + r, ignoreDoors) or wallAt(x + r, y + r, ignoreDoors) then
         return true
     end
 
@@ -101,7 +118,16 @@ function AI.move(s, dt, player, Sprites)
     local nx = s.x + math.cos(DIRS[s.moveDir]) * speed * dt
     local ny = s.y + math.sin(DIRS[s.moveDir]) * speed * dt
     if AI.isBlocked(s, nx, ny, Sprites, player) then
-        AI.newChaseDir(s, player, Sprites) -- changement de direction
+        local col, row = doorAt(s, nx, ny, Sprites)
+        if col and not AI.isBlocked(s, nx, ny, Sprites, player, true) then
+            Doors.use(col, row, player, Map.tileSize, true)
+        elseif nx ~= s.x and not AI.isBlocked(s, nx, s.y, Sprites, player) then
+            s.x = nx
+        elseif ny ~= s.y and not AI.isBlocked(s, s.x, ny, Sprites, player) then
+            s.y = ny
+        else
+            AI.newChaseDir(s, player, Sprites)
+        end
     else
         s.x, s.y = nx, ny
     end

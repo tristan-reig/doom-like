@@ -1,9 +1,12 @@
+local Doors = require("src.doors")
+
 local Map = {}
 
 Map.tileSize = 64
 
 Map.EXIT = 5
 Map.EXIT_ON = 6
+Map.DOOR = 7
 
 Map.grid = { { 1 } }
 Map.rows = 1
@@ -34,8 +37,17 @@ function Map.setTileAt(x, y, value)
     end
 end
 
+function Map.cellAt(x, y)
+    return math.floor(x / Map.tileSize) + 1, math.floor(y / Map.tileSize) + 1
+end
+
 function Map.isWall(x, y)
-    return Map.getTileAt(x, y) ~= 0
+    local tile = Map.getTileAt(x, y)
+    if tile == Map.DOOR then
+        local col, row = Map.cellAt(x, y)
+        return not Doors.isPassable(col, row)
+    end
+    return tile ~= 0
 end
 
 Map.colors = {
@@ -45,6 +57,7 @@ Map.colors = {
     [4] = {0.55, 0.40, 0.20},
     [5] = {0.90, 0.10, 0.10},
     [6] = {0.10, 0.90, 0.10},
+    [7] = {0.80, 0.70, 0.30},
 }
 
 -- Dessin vue de dessus
@@ -54,6 +67,7 @@ function Map.draw(scale)
     for row = 1, Map.rows do
         for col = 1, Map.cols do
             local tile = Map.grid[row][col]
+            if tile == Map.DOOR and Doors.isPassable(col, row) then tile = 0 end
             if tile ~= 0 then
                 love.graphics.setColor(Map.colors[tile] or {1, 1, 1})
             else

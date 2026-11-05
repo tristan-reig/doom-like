@@ -9,6 +9,7 @@ Fichiers :
   patches/rw13_1.png   -> rw13_1.png
   flats/floor4_8.png   -> floor4_8.png
   flats/ceil3_5.png    -> ceil3_5.png
+  patches/door2_4.png  -> door2_4.png
 
   exit_off.png et exit_on.png : assemblées pour ce projet à partir de
   patches/wall54_1.png, patches/exit1.png et patches/sw1s0.png / sw1s1.png

@@ -1,4 +1,5 @@
 local Map = require("src.map")
+local Doors = require("src.doors")
 
 local Level = {}
 
@@ -9,6 +10,7 @@ local walls = {
     ["M"] = 3, -- métal
     ["C"] = 4, -- caisses
     ["E"] = Map.EXIT, -- interrupteur de sortie
+    ["D"] = Map.DOOR, -- porte
 }
 
 -- Objets et monstres
@@ -81,6 +83,15 @@ end
 
 function Level.start(level, player, Sprites)
     Map.setGrid(level.grid)
+
+    -- Créer les portes du niveau
+    Doors.clear()
+    for row, line in ipairs(level.grid) do
+        for col, tile in ipairs(line) do
+            if tile == Map.DOOR then Doors.add(col, row) end
+        end
+    end
+
     Sprites.clear()
     for _, t in ipairs(level.things) do
         Sprites.add(t.type, t.col, t.row, t.angle)

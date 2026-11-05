@@ -7,6 +7,7 @@ local Sound = require("src.sound")
 local Hud = require("src.hud")
 local Pickups = require("src.pickups")
 local Level = require("src.level")
+local Doors = require("src.doors")
 
 local levels = {
     "levels/e1m1.txt",
@@ -65,16 +66,36 @@ local function startLevel(index)
     Hud.message(level.name)
 end
 
+local USE_RANGE = 48
+
+local function pointAhead(dist)
+    return player.x + math.cos(player.angle) * (dist + 1),
+        player.y + math.sin(player.angle) * (dist + 1)
+end
+
 local function use()
-    local dist, tile = Raycaster.castRay(player.x, player.y, player.angle)
-    if tile == Map.EXIT and dist < 48 then
-        -- Point touché par le rayon, un peu enfoncé dans le mur pour tomber dans la bonne case
-        local hx = player.x + math.cos(player.angle) * (dist + 1)
-        local hy = player.y + math.sin(player.angle) * (dist + 1)
-        Map.setTileAt(hx, hy, Map.EXIT_ON) -- l'interrupteur passe au vert
+    local dist, tile, _, _, door = Raycaster.castRay(player.x, player.y, player.angle, true)
+
+    -- Porte entrouverte
+    if door and door.dist < USE_RANGE then
+        local col, row = Map.cellAt(pointAhead(door.dist))
+        Doors.use(col, row, player, Map.tileSize)
+        return
+    end
+    if dist >= USE_RANGE then return end
+
+    -- Porte fermée
+    if tile == Map.DOOR then
+        local col, row = Map.cellAt(pointAhead(dist))
+        Doors.use(col, row, player, Map.tileSize)
+
+    -- L'interrupteur de sortie
+    elseif tile == Map.EXIT then
+        local hx, hy = pointAhead(dist)
+        Map.setTileAt(hx, hy, Map.EXIT_ON) -- l'interrupteur devient vert
         Sound.play("exitSwitch")
         gameState = "exiting"
-        exitTimer = 1 -- une seconde avant l'écran de fin
+        exitTimer = 1
     end
 end
 
@@ -163,6 +184,11 @@ function love.update(dt)
     targetInSight = Sprites.hitscan(player, Raycaster.zbuffer[centerCol] or math.huge) ~= nil
 
     Sprites.update(dt, player)
+
+    -- Les portes s'ouvrent / se ferment (pas sur le joueur)
+    Doors.update(dt, player, Map.tileSize, function(col, row)
+        return Sprites.cellOccupied(col, row, player)
+    end)
 end
 
 local function drawCrosshair()
@@ -186,7 +212,9 @@ function love.draw()
     local projDist = Raycaster.draw(player)
 
     --- Les objets
-    Sprites.draw(player, Raycaster.zbuffer, projDist, Raycaster.fadeDist)
+    Sprites.draw(player, Raycaster.zbuffer, projDist, Raycaster.fadeDist, Raycaster.doorbuffer, "behind")
+    Raycaster.drawDoors()
+    Sprites.draw(player, Raycaster.zbuffer, projDist, Raycaster.fadeDist, Raycaster.doorbuffer, "front")
 
     -- L'arme et le viseur
     if not player.dead then

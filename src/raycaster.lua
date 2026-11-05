@@ -1,4 +1,5 @@
 local Map = require("src.map")
+local Doors = require("src.doors")
 
 local Raycaster = {}
 
@@ -8,7 +9,7 @@ Raycaster.fadeDist = 900
 local floorShader -- shader du sol et du plafond
 
 -- Lance un rayon depuis (px, py) dans la direction "angle".
-function Raycaster.castRay(px, py, angle)
+function Raycaster.castRay(px, py, angle, forDrawing)
     local ts = Map.tileSize
 
     local posX, posY = px / ts, py / ts
@@ -35,7 +36,23 @@ function Raycaster.castRay(px, py, angle)
         sideY = (mapY + 1 - posY) * deltaY
     end
 
+    local function impact(side)
+        local dist = (side == 0) and (sideX - deltaX) or (sideY - deltaY)
+        local wallX
+        if side == 0 then
+            wallX = posY + dist * dirY
+        else
+            wallX = posX + dist * dirX
+        end
+        wallX = wallX - math.floor(wallX)
+        if (side == 0 and dirX < 0) or (side == 1 and dirY > 0) then
+            wallX = 1 - wallX
+        end
+        return dist, wallX
+    end
+
     local side, tile = 0, 0
+    local door = nil
     for _ = 1, 100 do
         if sideX < sideY then
             sideX = sideX + deltaX
@@ -49,30 +66,23 @@ function Raycaster.castRay(px, py, angle)
 
         local row = Map.grid[mapY + 1]
         tile = row and row[mapX + 1] or 1
-        if tile ~= 0 then break end
+
+        if tile == Map.DOOR then
+            local open = Doors.openness(mapX + 1, mapY + 1) or 0
+            if forDrawing then
+                if open <= 0 or door then break end
+                local d, wx = impact(side)
+                door = { dist = d * ts, side = side, wallX = wx, open = open }
+            elseif open < Doors.passable then
+                break -- pas assez ouverte : elle bloque
+            end
+        elseif tile ~= 0 then
+            break
+        end
     end
 
-    local dist
-    if side == 0 then
-        dist = sideX - deltaX
-    else
-        dist = sideY - deltaY
-    end
-
-    local wallX
-    if side == 0 then
-        wallX = posY + dist * dirY
-    else
-        wallX = posX + dist * dirX
-    end
-    wallX = wallX - math.floor(wallX)
-
-    -- On retourne la texture sur certaines faces pour qu'elle ne soit pas en miroir
-    if (side == 0 and dirX < 0) or (side == 1 and dirY > 0) then
-        wallX = 1 - wallX
-    end
-
-    return dist * ts, tile, side, wallX
+    local dist, wallX = impact(side)
+    return dist * ts, tile, side, wallX, door
 end
 
 -- Textures des murs
@@ -83,10 +93,12 @@ local textureFiles = {
     [4] = "assets/textures/rw13_1.png",
     [5] = "assets/textures/exit_off.png",
     [6] = "assets/textures/exit_on.png",
+    [7] = "assets/textures/door2_4.png",
 }
 
 -- Pour chaque texture : l'image + un "Quad" par colonne de pixels.
 local textures = {}
+local doorQuad
 
 function Raycaster.load()
     for id, path in pairs(textureFiles) do
@@ -101,6 +113,8 @@ function Raycaster.load()
 
         textures[id] = { image = img, quads = quads, width = tw, height = th }
     end
+
+    doorQuad = love.graphics.newQuad(0, 0, 1, 1, 1, 1)
 
     local function loadFlat(path)
         local img = love.graphics.newImage(path)
@@ -134,6 +148,33 @@ end
 
 Raycaster.zbuffer = {}
 
+Raycaster.doorbuffer = {}
+local doorHits = {}
+
+-- Dessine une colonne de mur ou de porte.
+local function drawSlice(x, tile, side, wallX, perpDist, top, height, texTop)
+    local shade = (side == 1) and 0.7 or 1.0
+    shade = shade * math.max(0.25, 1 - perpDist / Raycaster.fadeDist)
+
+    local tex = textures[tile]
+    if tex then
+        local texCol = math.floor(wallX * tex.width)
+        if texCol >= tex.width then texCol = tex.width - 1 end
+        love.graphics.setColor(shade, shade, shade)
+        if texTop and texTop > 0 then
+            local ty = texTop * tex.height
+            doorQuad:setViewport(texCol, ty, 1, tex.height - ty, tex.width, tex.height)
+            love.graphics.draw(tex.image, doorQuad, x, top, 0, 1, height / (tex.height - ty))
+        else
+            love.graphics.draw(tex.image, tex.quads[texCol], x, top, 0, 1, height / tex.height)
+        end
+    else
+        local c = Map.colors[tile] or {1, 1, 1}
+        love.graphics.setColor(c[1] * shade, c[2] * shade, c[3] * shade)
+        love.graphics.rectangle("fill", x, top, 1, height)
+    end
+end
+
 -- Dessine la vue 3D
 function Raycaster.draw(player)
     local w, h = love.graphics.getDimensions()
@@ -148,7 +189,7 @@ function Raycaster.draw(player)
         local offset = math.atan((x - halfW) / projDist)
         local rayAngle = player.angle + offset
 
-        local dist, tile, side, wallX = Raycaster.castRay(player.x, player.y, rayAngle)
+        local dist, tile, side, wallX, door = Raycaster.castRay(player.x, player.y, rayAngle, true)
 
         -- Correction de l'effet "fish-eye"
         local perpDist = dist * math.cos(offset)
@@ -158,27 +199,38 @@ function Raycaster.draw(player)
         -- Plus le mur est loin, plus il est petit
         local wallH = Map.tileSize * projDist / perpDist
 
-        local top = halfH - wallH / 2
+        drawSlice(x, tile, side, wallX, perpDist, halfH - wallH / 2, wallH)
 
-        local shade = (side == 1) and 0.7 or 1.0
-        shade = shade * math.max(0.25, 1 - perpDist / 900)
-
-        local tex = textures[tile]
-        if tex then
-            local texCol = math.floor(wallX * tex.width)
-            if texCol >= tex.width then texCol = tex.width - 1 end
-
-            love.graphics.setColor(shade, shade, shade)
-            love.graphics.draw(tex.image, tex.quads[texCol], x, top, 0, 1, wallH / tex.height)
+        if door then
+            door.perpDist = math.max(0.0001, door.dist * math.cos(offset))
+            doorHits[x] = door
+            Raycaster.doorbuffer[x] = door.perpDist
         else
-            -- Pas de texture pour ce type de mur : couleur unie comme avant
-            local c = Map.colors[tile] or {1, 1, 1}
-            love.graphics.setColor(c[1] * shade, c[2] * shade, c[3] * shade)
-            love.graphics.rectangle("fill", x, top, 1, wallH)
+            doorHits[x] = false
+            Raycaster.doorbuffer[x] = false
         end
     end
 
+    Raycaster.projDist = projDist
     return projDist
+end
+
+-- Dessine les portes entrouvertes
+function Raycaster.drawDoors()
+    local w, h = love.graphics.getDimensions()
+    local halfH = h / 2
+    local projDist = Raycaster.projDist
+    for x = 0, w - 1 do
+        local d = doorHits[x]
+        if d then
+            local wallH = Map.tileSize * projDist / d.perpDist
+            local top = halfH - wallH / 2
+            local visible = wallH * (1 - d.open)
+            if visible > 0 then
+                drawSlice(x, Map.DOOR, d.side, d.wallX, d.perpDist, top, visible, d.open)
+            end
+        end
+    end
 end
 
 return Raycaster

@@ -13,6 +13,8 @@ local soundFiles = {
     itemUp = "assets/sounds/dsitemup.wav",
     noAmmo = "assets/sounds/dsnoway.wav",
     exitSwitch  = "assets/sounds/dsswtchx.wav",
+    doorOpen = "assets/sounds/dsdoropn.wav",
+    doorClose = "assets/sounds/dsdorcls.wav",
 }
 
 local sources = {}
