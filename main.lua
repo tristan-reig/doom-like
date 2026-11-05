@@ -3,6 +3,7 @@ local Player = require("src.player")
 local Raycaster = require("src.raycaster")
 local Sprites = require("src.sprites")
 local Weapon = require("src.weapon")
+local Sound = require("src.sound")
 
 local player
 local weapon
@@ -22,6 +23,7 @@ function love.load()
     player = Player.new(1.5 * Map.tileSize, 1.5 * Map.tileSize, 0)
     Raycaster.load()
     Sprites.load()
+    Sound.load()
     weapon = Weapon.new()
 
     Sprites.add("barrel", 5, 2)
@@ -59,6 +61,8 @@ function love.update(dt)
 
     local wantFire = mouseCaptured and (love.mouse.isDown(1) or love.keyboard.isDown("lctrl", "rctrl"))
     if weapon:update(dt, player, wantFire) then
+        Sound.play("shotgun")
+
         -- On cherche ce qu'on touche au centre de l'écran
         local centerCol = math.floor(love.graphics.getWidth() / 2)
         local wallDist = Raycaster.zbuffer[centerCol] or math.huge
@@ -72,7 +76,7 @@ function love.update(dt)
     local centerCol = math.floor(love.graphics.getWidth() / 2)
     targetInSight = Sprites.hitscan(player, Raycaster.zbuffer[centerCol] or math.huge) ~= nil
 
-    Sprites.update(dt)
+    Sprites.update(dt, player)
 end
 
 local function drawCrosshair()

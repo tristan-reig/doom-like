@@ -1,4 +1,5 @@
 local Map = require("src.map")
+local Sound = require("src.sound")
 
 local Sprites = {}
 
@@ -13,7 +14,7 @@ local typeDefs = {
         image = "bar1a0",
         shootable = true,
         explode = {
-            { "bexpa0", 5 }, { "bexpb0", 5 },
+            { "bexpa0", 5 }, { "bexpb0", 5, sound = "barrel" },
             { "bexpc0", 5, bright = true },
             { "bexpd0", 10, bright = true },
             { "bexpe0", 10, bright = true },
@@ -60,7 +61,7 @@ function Sprites.add(typeName, col, row)
 end
 
 -- Fait avancer les animations et retire les objets détruits
-function Sprites.update(dt)
+function Sprites.update(dt, player)
     for i = #Sprites.list, 1, -1 do
         local s = Sprites.list[i]
         if s.anim then
@@ -72,8 +73,12 @@ function Sprites.update(dt)
                     table.remove(Sprites.list, i)
                     s.anim = nil
                 else
-                    s.image = s.anim[s.animIndex][1]
-                    s.bright = s.anim[s.animIndex].bright
+                    local frame = s.anim[s.animIndex]
+                    s.image = frame[1]
+                    s.bright = frame.bright
+                    if frame.sound then
+                        Sound.playAt(frame.sound, s.x, s.y, player)
+                    end
                 end
             end
         end
