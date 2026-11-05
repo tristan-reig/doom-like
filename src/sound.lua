@@ -6,6 +6,10 @@ local soundFiles = {
     zombiePain = "assets/sounds/dspopain.wav",
     zombieDeath = "assets/sounds/dspodth1.wav",
     gib = "assets/sounds/dsslop.wav",
+    zombieSight = "assets/sounds/dsposit1.wav",
+    zombieShoot = "assets/sounds/dspistol.wav",
+    playerPain  = "assets/sounds/dsplpain.wav",
+    playerDeath = "assets/sounds/dspldeth.wav",
 }
 
 local sources = {}

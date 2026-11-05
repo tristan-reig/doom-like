@@ -8,6 +8,10 @@ Fichiers (dossier sounds/ de Freedoom) :
   dspopain.wav  (zombie touché)
   dspodth1.wav  (mort du zombie)
   dsslop.wav    (mort violente)
+  dsposit1.wav  (zombie qui repère le joueur)
+  dspistol.wav  (tir du zombie)
+  dsplpain.wav  (joueur blessé)
+  dspldeth.wav  (mort du joueur)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 

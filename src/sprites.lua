@@ -1,6 +1,7 @@
 local Map = require("src.map")
 local Sound = require("src.sound")
 local offsets = require("src.sprite_offsets")
+local AI = require("src.ai")
 
 local Sprites = {}
 
@@ -27,9 +28,26 @@ local typeDefs = {
     },
     zombie = {
         health = 20, radius = 10, solid = true, painChance = 200 / 256,
+        monster = true, speed = 35, sightSound = "zombieSight",
         states = {
-            idle = { { "possa", 10 }, { "possb", 10 }, loop = true },
-            pain = { { "possg", 3 }, { "possg", 3, sound = "zombiePain" }, next = "idle" },
+            -- repos (cherche le joueur)
+            idle = { { "possa", 10, action = "look" }, { "possb", 10, action = "look" }, loop = true },
+            -- poursuite
+            chase = {
+                { "possa", 4, action = "chase" }, { "possa", 4, action = "chase" },
+                { "possb", 4, action = "chase" }, { "possb", 4, action = "chase" },
+                { "possc", 4, action = "chase" }, { "possc", 4, action = "chase" },
+                { "possd", 4, action = "chase" }, { "possd", 4, action = "chase" },
+                loop = true,
+            },
+            -- animation de tir
+            missile = {
+                { "posse", 10, action = "face" },
+                { "possf", 8, bright = true, action = "shoot" },
+                { "posse", 8 },
+                next = "chase",
+            },
+            pain = { { "possg", 3 }, { "possg", 3, sound = "zombiePain" }, next = "chase" },
             death = {
                 { "possh0", 5 },
                 { "possi0", 5, sound = "zombieDeath" },
@@ -37,6 +55,7 @@ local typeDefs = {
                 { "possk0", 5 },
                 { "possl0", -1 },
             },
+            -- mort violente (quand il prend beaucoup de dégâts d'un coup)
             gib = {
                 { "possm0", 5 },
                 { "possn0", 5, sound = "gib" },
@@ -97,9 +116,14 @@ local function enterFrame(s, player)
     if frame.notSolid then s.solid = false end
     if frame.explode then Sprites.radiusDamage(s, 128, player) end
     if frame.remove then s.removed = true end
+    if frame.action then AI.actions[frame.action](s, player, Sprites) end
 end
 
-local function setState(s, stateName, player)
+function Sprites.getDef(s)
+    return typeDefs[s.type]
+end
+
+function Sprites.setState(s, stateName, player)
     s.state = stateName
     s.frameIndex = 1
     s.timer = 0
@@ -142,10 +166,15 @@ function Sprites.update(dt, player)
                 s.frameIndex = 1
                 enterFrame(s, player)
             elseif state.next then
-                setState(s, state.next, player)
+                Sprites.setState(s, state.next, player)
             else
                 break
             end
+        end
+
+        -- Les monstres en chasse avancent en continu
+        if s.state == "chase" and not s.dead and not s.removed then
+            AI.move(s, dt, player, Sprites)
         end
     end
 
@@ -164,12 +193,31 @@ function Sprites.damage(s, amount, player)
     if s.health <= 0 then
         s.dead = true
         if def.states.gib and s.health < -def.health then
-            setState(s, "gib", player)
+            Sprites.setState(s, "gib", player)
         else
-            setState(s, "death", player)
+            Sprites.setState(s, "death", player)
         end
-    elseif def.painChance and def.states.pain and math.random() < def.painChance then
-        setState(s, "pain", player)
+    else
+        -- Si le monstre est blessé, il se réveille directement
+        if def.monster and not s.awake then
+            s.awake = true
+            s.reactionTime = 0
+        end
+        if def.painChance and def.states.pain and math.random() < def.painChance then
+            Sprites.setState(s, "pain", player)
+        elseif def.monster and s.state == "idle" then
+            Sprites.setState(s, "chase", player)
+        end
+    end
+end
+
+function Sprites.alert(player, radius)
+    radius = radius or 1000
+    for _, s in ipairs(Sprites.list) do
+        if typeDefs[s.type].monster and not s.dead and not s.awake then
+            local dist = math.sqrt((s.x - player.x) ^ 2 + (s.y - player.y) ^ 2)
+            if dist < radius then AI.wake(s, player, Sprites) end
+        end
     end
 end
 
@@ -185,7 +233,17 @@ function Sprites.radiusDamage(source, power, player)
             end
         end
     end
+
+    -- Le joueur peut aussi prendre des dégâts de l'explosion
+    if player and not player.dead and Sprites.onPlayerHit then
+        local dist = math.sqrt((player.x - source.x) ^ 2 + (player.y - source.y) ^ 2)
+        dist = math.max(0, dist - (player.radius or 12))
+        local dmg = power - dist * 2
+        if dmg > 0 then Sprites.onPlayerHit(math.floor(dmg)) end
+    end
 end
+
+Sprites.onPlayerHit = nil
 
 -- Tir instantané depuis le joueur.
 function Sprites.hitscan(player, wallDist, angleOffset)
