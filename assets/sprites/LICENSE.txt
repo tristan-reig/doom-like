@@ -10,6 +10,7 @@ Fichiers (dossier sprites/ de Freedoom) :
   bexpa0.png à bexpe0.png  (explosion du tonneau)
   shtga0.png à shtgd0.png  (fusil à pompe)
   shtfa0.png, shtfb0.png   (flash du fusil)
+  possa1.png à possu0.png  (zombie)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 

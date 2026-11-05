@@ -1,5 +1,6 @@
 local Map = require("src.map")
 local Sound = require("src.sound")
+local offsets = require("src.sprite_offsets")
 
 local Sprites = {}
 
@@ -11,22 +12,52 @@ local TIC = 1 / 35
 -- Types d'objets.
 local typeDefs = {
     barrel = {
-        image = "bar1a0",
-        shootable = true,
-        explode = {
-            { "bexpa0", 5 }, { "bexpb0", 5, sound = "barrel" },
-            { "bexpc0", 5, bright = true },
-            { "bexpd0", 10, bright = true },
-            { "bexpe0", 10, bright = true },
+        health = 20, radius = 6, solid = true,
+        states = {
+            idle = { { "bar1a0", -1 } },
+            death = {
+                { "bexpa0", 5 },
+                { "bexpb0", 5, sound = "barrel" },
+                { "bexpc0", 5, bright = true, explode = true, notSolid = true },
+                { "bexpd0", 10, bright = true },
+                { "bexpe0", 10, bright = true },
+                { "bexpe0", 0, remove = true },
+            },
         },
     },
-    lamp     = { image = "colua0" },
-    tallLamp = { image = "tlmpa0" },
-    column   = { image = "col1a0" },
+    zombie = {
+        health = 20, radius = 10, solid = true, painChance = 200 / 256,
+        states = {
+            idle = { { "possa", 10 }, { "possb", 10 }, loop = true },
+            pain = { { "possg", 3 }, { "possg", 3, sound = "zombiePain" }, next = "idle" },
+            death = {
+                { "possh0", 5 },
+                { "possi0", 5, sound = "zombieDeath" },
+                { "possj0", 5, notSolid = true },
+                { "possk0", 5 },
+                { "possl0", -1 },
+            },
+            gib = {
+                { "possm0", 5 },
+                { "possn0", 5, sound = "gib" },
+                { "posso0", 5, notSolid = true },
+                { "possp0", 5 }, { "possq0", 5 }, { "possr0", 5 },
+                { "posss0", 5 }, { "posst0", 5 },
+                { "possu0", -1 },
+            },
+        },
+    },
+    lamp     = { radius = 8, solid = true, states = { idle = { { "colua0", -1 } } } },
+    tallLamp = { radius = 8, solid = true, states = { idle = { { "tlmpa0", -1 } } } },
+    column   = { radius = 8, solid = true, states = { idle = { { "col1a0", -1 } } } },
 }
 
 local images = {}
 Sprites.list = {}
+
+local function isRotated(name)
+    return not name:match("%d$")
+end
 
 local function loadImage(name)
     if images[name] then return end
@@ -39,70 +70,135 @@ local function loadImage(name)
         quads[col] = love.graphics.newQuad(col, 0, 1, ih, iw, ih)
     end
 
-    images[name] = { image = img, quads = quads, width = iw, height = ih }
+    local off = offsets[name] or { iw / 2, ih }
+
+    images[name] = { image = img, quads = quads, width = iw, height = ih, offX = off[1], offY = off[2] }
 end
 
 function Sprites.load()
     for _, def in pairs(typeDefs) do
-        loadImage(def.image)
-        if def.explode then
-            for _, frame in ipairs(def.explode) do loadImage(frame[1]) end
-        end
-    end
-end
-
-function Sprites.add(typeName, col, row)
-    table.insert(Sprites.list, {
-        type = typeName,
-        image = typeDefs[typeName].image,
-        x = (col - 0.5) * Map.tileSize,
-        y = (row - 0.5) * Map.tileSize,
-    })
-end
-
--- Fait avancer les animations et retire les objets détruits
-function Sprites.update(dt, player)
-    for i = #Sprites.list, 1, -1 do
-        local s = Sprites.list[i]
-        if s.anim then
-            s.animTimer = s.animTimer + dt
-            while s.anim and s.animTimer >= s.anim[s.animIndex][2] * TIC do
-                s.animTimer = s.animTimer - s.anim[s.animIndex][2] * TIC
-                s.animIndex = s.animIndex + 1
-                if s.animIndex > #s.anim then
-                    table.remove(Sprites.list, i)
-                    s.anim = nil
+        for _, state in pairs(def.states) do
+            for _, frame in ipairs(state) do
+                if isRotated(frame[1]) then
+                    for rot = 1, 8 do loadImage(frame[1] .. rot) end
                 else
-                    local frame = s.anim[s.animIndex]
-                    s.image = frame[1]
-                    s.bright = frame.bright
-                    if frame.sound then
-                        Sound.playAt(frame.sound, s.x, s.y, player)
-                    end
+                    loadImage(frame[1])
                 end
             end
         end
     end
 end
 
--- Coordonnées d'un objet dans le repère caméra
-local function toCamera(player, s)
-    local cos, sin = math.cos(player.angle), math.sin(player.angle)
-    local dx, dy = s.x - player.x, s.y - player.y
-    return dx * cos + dy * sin, -dx * sin + dy * cos
+-- Applique les effets de l'image courante
+local function enterFrame(s, player)
+    local frame = typeDefs[s.type].states[s.state][s.frameIndex]
+    s.frame = frame
+    if frame.sound then Sound.playAt(frame.sound, s.x, s.y, player) end
+    if frame.notSolid then s.solid = false end
+    if frame.explode then Sprites.radiusDamage(s, 128, player) end
+    if frame.remove then s.removed = true end
 end
 
--- Tir instantané droit devant (au centre de l'écran).
--- Renvoie l'objet touché le plus proche, ou nil.
--- wallDist : distance du mur au centre de l'écran (on ne tire pas à travers les murs)
-function Sprites.hitscan(player, wallDist)
+local function setState(s, stateName, player)
+    s.state = stateName
+    s.frameIndex = 1
+    s.timer = 0
+    enterFrame(s, player)
+end
+
+function Sprites.add(typeName, col, row, angle)
+    local def = typeDefs[typeName]
+    assert(def, "Type de sprite inconnu : " .. tostring(typeName))
+
+    local s = {
+        type = typeName,
+        x = (col - 0.5) * Map.tileSize,
+        y = (row - 0.5) * Map.tileSize,
+        angle = angle or 0,
+        health = def.health,
+        solid = def.solid,
+        dead = false,
+    }
+    s.state = "idle"
+    s.frameIndex = 1
+    s.timer = 0
+    s.frame = def.states.idle[1]
+    table.insert(Sprites.list, s)
+    return s
+end
+
+-- Fait avancer les animations et retire les objets détruits
+function Sprites.update(dt, player)
+    for _, s in ipairs(Sprites.list) do
+        local states = typeDefs[s.type].states
+        s.timer = s.timer + dt
+        while not s.removed and s.frame[2] >= 0 and s.timer >= s.frame[2] * TIC do
+            s.timer = s.timer - s.frame[2] * TIC
+            local state = states[s.state]
+            if s.frameIndex < #state then
+                s.frameIndex = s.frameIndex + 1
+                enterFrame(s, player)
+            elseif state.loop then
+                s.frameIndex = 1
+                enterFrame(s, player)
+            elseif state.next then
+                setState(s, state.next, player)
+            else
+                break
+            end
+        end
+    end
+
+    -- Retirer les objets supprimés
+    for i = #Sprites.list, 1, -1 do
+        if Sprites.list[i].removed then table.remove(Sprites.list, i) end
+    end
+end
+
+-- Application des dégâts
+function Sprites.damage(s, amount, player)
+    local def = typeDefs[s.type]
+    if s.dead or not s.health then return end
+
+    s.health = s.health - (amount or 10)
+    if s.health <= 0 then
+        s.dead = true
+        if def.states.gib and s.health < -def.health then
+            setState(s, "gib", player)
+        else
+            setState(s, "death", player)
+        end
+    elseif def.painChance and def.states.pain and math.random() < def.painChance then
+        setState(s, "pain", player)
+    end
+end
+
+-- Dégâts autour d'un objet (plus forts au centre)
+function Sprites.radiusDamage(source, power, player)
+    for _, s in ipairs(Sprites.list) do
+        if s ~= source and not s.dead and s.health then
+            local dist = math.sqrt((s.x - source.x) ^ 2 + (s.y - source.y) ^ 2)
+            dist = math.max(0, dist - (typeDefs[s.type].radius or 8))
+            local dmg = power - dist * 2
+            if dmg > 0 then
+                Sprites.damage(s, dmg, player)
+            end
+        end
+    end
+end
+
+-- Tir instantané depuis le joueur.
+function Sprites.hitscan(player, wallDist, angleOffset)
+    local a = player.angle + (angleOffset or 0)
+    local cos, sin = math.cos(a), math.sin(a)
     local best, bestDepth = nil, wallDist
     for _, s in ipairs(Sprites.list) do
-        local def = typeDefs[s.type]
-        if def.shootable and not s.anim then
-            local depth, side = toCamera(player, s)
-            local halfWidth = images[s.image].width * Sprites.unitsPerPixel / 2
-            if depth > 0 and depth < bestDepth and math.abs(side) < halfWidth then
+        if s.health and not s.dead then
+            local dx, dy = s.x - player.x, s.y - player.y
+            local depth = dx * cos + dy * sin
+            local side = -dx * sin + dy * cos
+            local radius = typeDefs[s.type].radius or 8
+            if depth > 0 and depth < bestDepth and math.abs(side) < radius then
                 best, bestDepth = s, depth
             end
         end
@@ -110,15 +206,30 @@ function Sprites.hitscan(player, wallDist)
     return best
 end
 
--- Application des dégâts
-function Sprites.damage(s)
-    local def = typeDefs[s.type]
-    if def.explode and not s.anim then
-        s.anim = def.explode
-        s.animIndex = 1
-        s.animTimer = 0
-        s.image = s.anim[1][1]
+function Sprites.collide(player, oldX, oldY)
+    local pr = player.radius or 12
+    local function blocked(x, y)
+        for _, s in ipairs(Sprites.list) do
+            if s.solid then
+                local r = pr + (typeDefs[s.type].radius or 8)
+                if (x - s.x) ^ 2 + (y - s.y) ^ 2 < r * r then return true end
+            end
+        end
+        return false
     end
+
+    local newX, newY = player.x, player.y
+    if blocked(newX, oldY) then newX = oldX end
+    if blocked(newX, newY) then newY = oldY end
+    player.x, player.y = newX, newY
+end
+
+-- Choisit l'image d'un sprite à 8 directions selon l'angle.
+local function rotationFor(s, player)
+    local toViewer = math.atan2(player.y - s.y, player.x - s.x)
+    local rel = toViewer - s.angle
+    local idx = math.floor((-rel + math.pi / 8) / (math.pi / 4)) % 8
+    return idx + 1
 end
 
 -- Dessine tous les objets.
@@ -126,11 +237,15 @@ function Sprites.draw(player, zbuffer, projDist, fadeDist)
     local w, h = love.graphics.getDimensions()
     local halfW, halfH = w / 2, h / 2
     local camHeight = Map.tileSize / 2
+    local cos, sin = math.cos(player.angle), math.sin(player.angle)
+    local upp = Sprites.unitsPerPixel
 
     -- Passer chaque objet dans le repère caméra
     local visible = {}
     for _, s in ipairs(Sprites.list) do
-        local depth, side = toCamera(player, s)
+        local dx, dy = s.x - player.x, s.y - player.y
+        local depth = dx * cos + dy * sin
+        local side = -dx * sin + dy * cos
         if depth > 1 then
             table.insert(visible, { sprite = s, depth = depth, side = side })
         end
@@ -141,18 +256,22 @@ function Sprites.draw(player, zbuffer, projDist, fadeDist)
 
     -- Dessiner
     for _, v in ipairs(visible) do
-        local t = images[v.sprite.image]
+        local s = v.sprite
+        local name = s.frame[1]
+        if isRotated(name) then name = name .. rotationFor(s, player) end
+        local t = images[name]
+
         local scale = projDist / v.depth
-        local spriteW = t.width * Sprites.unitsPerPixel * scale
-        local spriteH = t.height * Sprites.unitsPerPixel * scale
+        local pxScale = upp * scale
+        local spriteW = t.width * pxScale
+        local spriteH = t.height * pxScale
 
         local centerX = halfW + v.side * scale
-        local left = centerX - spriteW / 2
         local floorY = halfH + camHeight * scale
-        local top = floorY - spriteH
+        local left = centerX - t.offX * pxScale
+        local top = floorY - t.offY * pxScale
 
-        -- Eclairage de l'explosion
-        local shade = v.sprite.bright and 1 or math.max(0.25, 1 - v.depth / fadeDist)
+        local shade = s.frame.bright and 1 or math.max(0.25, 1 - v.depth / fadeDist)
         love.graphics.setColor(shade, shade, shade)
 
         local firstCol = math.max(0, math.floor(left))

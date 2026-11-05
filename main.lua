@@ -27,12 +27,15 @@ function love.load()
     weapon = Weapon.new()
 
     Sprites.add("barrel", 5, 2)
-    Sprites.add("barrel", 6, 2)
+    Sprites.add("barrel", 5.5, 2)
     Sprites.add("column", 8, 3)
     Sprites.add("lamp", 2, 7)
     Sprites.add("tallLamp", 13, 2)
     Sprites.add("barrel", 12, 8)
     Sprites.add("lamp", 5, 5)
+    Sprites.add("zombie", 6.2, 2, math.pi)
+    Sprites.add("zombie", 10, 7, -math.pi / 2)
+    Sprites.add("zombie", 13, 5, math.pi)
     setMouseCaptured(true)
 end
 
@@ -57,18 +60,21 @@ function love.focus(focused)
 end
 
 function love.update(dt)
+    local oldX, oldY = player.x, player.y
     player:update(dt)
+    Sprites.collide(player, oldX, oldY)
 
     local wantFire = mouseCaptured and (love.mouse.isDown(1) or love.keyboard.isDown("lctrl", "rctrl"))
     if weapon:update(dt, player, wantFire) then
         Sound.play("shotgun")
 
-        -- On cherche ce qu'on touche au centre de l'écran
-        local centerCol = math.floor(love.graphics.getWidth() / 2)
-        local wallDist = Raycaster.zbuffer[centerCol] or math.huge
-        local hit = Sprites.hitscan(player, wallDist)
-        if hit then
-            Sprites.damage(hit)
+        for _ = 1, 7 do
+            local spread = (math.random() - math.random()) * math.rad(5.6)
+            local wallDist = Raycaster.castRay(player.x, player.y, player.angle + spread)
+            local hit = Sprites.hitscan(player, wallDist, spread)
+            if hit then
+                Sprites.damage(hit, 5 * math.random(1, 3), player)
+            end
         end
     end
 

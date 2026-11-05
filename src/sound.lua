@@ -2,7 +2,10 @@ local Sound = {}
 
 local soundFiles = {
     shotgun = "assets/sounds/dsshotgn.wav",
-    barrel = "assets/sounds/dsbarexp.wav"
+    barrel = "assets/sounds/dsbarexp.wav",
+    zombiePain = "assets/sounds/dspopain.wav",
+    zombieDeath = "assets/sounds/dspodth1.wav",
+    gib = "assets/sounds/dsslop.wav",
 }
 
 local sources = {}

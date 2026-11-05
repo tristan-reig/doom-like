@@ -5,6 +5,9 @@ https://github.com/freedoom/freedoom
 Fichiers (dossier sounds/ de Freedoom) :
   dsshotgn.wav  (tir du fusil à pompe)
   dsbarexp.wav  (explosion de tonneau)
+  dspopain.wav  (zombie touché)
+  dspodth1.wav  (mort du zombie)
+  dsslop.wav    (mort violente)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 
