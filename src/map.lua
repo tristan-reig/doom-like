@@ -2,21 +2,18 @@ local Map = {}
 
 Map.tileSize = 64
 
-Map.grid = {
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,1,1,1,0,0,0,0,2,2,0,0,1},
-    {1,0,0,1,0,0,0,0,0,0,2,0,0,0,1},
-    {1,0,0,1,0,0,0,0,0,0,2,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,3,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,3,0,0,0,0,0,0,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-}
+Map.EXIT = 5
+Map.EXIT_ON = 6
 
-Map.rows = #Map.grid
-Map.cols = #Map.grid[1]
+Map.grid = { { 1 } }
+Map.rows = 1
+Map.cols = 1
+
+function Map.setGrid(grid)
+    Map.grid = grid
+    Map.rows = #grid
+    Map.cols = #grid[1]
+end
 
 -- Renvoie la valeur de la case contenant le point (x, y) en coordonnées monde.
 function Map.getTileAt(x, y)
@@ -28,6 +25,15 @@ function Map.getTileAt(x, y)
     return Map.grid[row][col]
 end
 
+-- Change la valeur de la case qui contient le point (x, y)
+function Map.setTileAt(x, y, value)
+    local col = math.floor(x / Map.tileSize) + 1
+    local row = math.floor(y / Map.tileSize) + 1
+    if Map.grid[row] and Map.grid[row][col] then
+        Map.grid[row][col] = value
+    end
+end
+
 function Map.isWall(x, y)
     return Map.getTileAt(x, y) ~= 0
 end
@@ -36,9 +42,12 @@ Map.colors = {
     [1] = {0.55, 0.55, 0.55},
     [2] = {0.70, 0.25, 0.20},
     [3] = {0.25, 0.45, 0.70},
+    [4] = {0.55, 0.40, 0.20},
+    [5] = {0.90, 0.10, 0.10},
+    [6] = {0.10, 0.90, 0.10},
 }
 
--- Dessin vue de dessus (scale = facteur de réduction, pour en faire une minimap plus tard)
+-- Dessin vue de dessus
 function Map.draw(scale)
     scale = scale or 1
     local s = Map.tileSize * scale

@@ -14,6 +14,7 @@ Fichiers (dossier sounds/ de Freedoom) :
   dspldeth.wav  (mort du joueur)
   dsitemup.wav  (objet ramassé)
   dsnoway.wav   (plus de munitions)
+  dsswtchx.wav  (interrupteur de sortie)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 

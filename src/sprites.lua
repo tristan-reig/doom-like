@@ -83,6 +83,25 @@ local typeDefs = {
 local images = {}
 Sprites.list = {}
 
+Sprites.stats = { kills = 0, totalKills = 0, items = 0, totalItems = 0 }
+
+function Sprites.clear()
+    Sprites.list = {}
+    Sprites.stats = { kills = 0, totalKills = 0, items = 0, totalItems = 0 }
+end
+
+function Sprites.countTotals()
+    for _, s in ipairs(Sprites.list) do
+        local def = typeDefs[s.type]
+        if def.monster then
+            Sprites.stats.totalKills = Sprites.stats.totalKills + 1
+        elseif def.pickup then
+            s.countsAsItem = true
+            Sprites.stats.totalItems = Sprites.stats.totalItems + 1
+        end
+    end
+end
+
 local function isRotated(name)
     return not name:match("%d$")
 end
@@ -219,6 +238,8 @@ function Sprites.damage(s, amount, player)
     s.health = s.health - (amount or 10)
     if s.health <= 0 then
         s.dead = true
+        if def.monster then Sprites.stats.kills = Sprites.stats.kills + 1 end
+        if def.drop then Sprites.spawn(def.drop, s.x, s.y) end
         if def.states.gib and s.health < -def.health then
             Sprites.setState(s, "gib", player)
         else

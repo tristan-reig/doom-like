@@ -6,12 +6,24 @@ local Weapon = require("src.weapon")
 local Sound = require("src.sound")
 local Hud = require("src.hud")
 local Pickups = require("src.pickups")
+local Level = require("src.level")
+
+local levels = {
+    "levels/e1m1.txt",
+    "levels/e1m2.txt"
+}
 
 local player
 local weapon
 local showMap = true
 local targetInSight = false
 local wasPressingFire = false
+
+local gameState = "playing"
+local levelIndex = 1
+local levelName = ""
+local levelTime = 0
+local exitTimer = 0
 
 local mouseSensitivity = 0.002
 local mouseCaptured = false
@@ -42,12 +54,37 @@ local function pickUp(kind)
     return true
 end
 
+-- Charge et démarre le niveau
+local function startLevel(index)
+    levelIndex = index
+    local level = Level.load(levels[index])
+    Level.start(level, player, Sprites)
+    levelName = level.name
+    levelTime = 0
+    gameState = "playing"
+    Hud.message(level.name)
+end
+
+local function use()
+    local dist, tile = Raycaster.castRay(player.x, player.y, player.angle)
+    if tile == Map.EXIT and dist < 48 then
+        -- Point touché par le rayon, un peu enfoncé dans le mur pour tomber dans la bonne case
+        local hx = player.x + math.cos(player.angle) * (dist + 1)
+        local hy = player.y + math.sin(player.angle) * (dist + 1)
+        Map.setTileAt(hx, hy, Map.EXIT_ON) -- l'interrupteur passe au vert
+        Sound.play("exitSwitch")
+        gameState = "exiting"
+        exitTimer = 1 -- une seconde avant l'écran de fin
+    end
+end
+
 function love.load()
-    player = Player.new(1.5 * Map.tileSize, 1.5 * Map.tileSize, 0)
+    player = Player.new(0, 0, 0)
     player.health = 100
     player.dead = false
     player.armor = 0
     player.ammo = 20
+
     Hud.load()
     Sprites.onPlayerHit = damagePlayer
     Sprites.onPickup = pickUp
@@ -56,27 +93,7 @@ function love.load()
     Sound.load()
     weapon = Weapon.new()
 
-    -- Placement des objets
-    Sprites.add("barrel", 5, 2)
-    Sprites.add("barrel", 5.5, 2)
-    Sprites.add("column", 8, 3)
-    Sprites.add("lamp", 2, 7)
-    Sprites.add("tallLamp", 13, 2)
-    Sprites.add("barrel", 12, 8)
-    Sprites.add("lamp", 5, 5)
-
-    -- Placement des collectibles
-    Sprites.add("stimpack", 2, 4)
-    Sprites.add("stimpack", 3, 9)
-    Sprites.add("medikit", 6, 6)
-    Sprites.add("shells", 9, 3)
-    Sprites.add("shellBox", 12, 5)
-    Sprites.add("armor", 14, 9)
-
-    -- Placement des zombies
-    Sprites.add("zombie", 6.2, 2, math.pi)
-    Sprites.add("zombie", 10, 7, -math.pi / 2)
-    Sprites.add("zombie", 13, 5, math.pi)
+    startLevel(1)
     setMouseCaptured(true)
 end
 
@@ -101,7 +118,18 @@ function love.focus(focused)
 end
 
 function love.update(dt)
+    Hud.update(dt)
+
+    if gameState == "intermission" or gameState == "victory" then return end
+
+    if gameState == "exiting" then
+        exitTimer = exitTimer - dt
+        if exitTimer <= 0 then gameState = "intermission" end
+        return
+    end
+
     if not player.dead then
+        levelTime = levelTime + dt
         local oldX, oldY = player.x, player.y
         player:update(dt)
         Sprites.collide(player, oldX, oldY)
@@ -119,22 +147,22 @@ function love.update(dt)
     if weapon:update(dt, player, wantFire and player.ammo > 0) then
         player.ammo = player.ammo - 1
         Sound.play("shotgun")
-        Sprites.alert(player) -- le bruit réveille les zombies proches
+        Sprites.alert(player)
         for _ = 1, 7 do
             local spread = (math.random() - math.random()) * math.rad(5.6)
             local wallDist = Raycaster.castRay(player.x, player.y, player.angle + spread)
             local hit = Sprites.hitscan(player, wallDist, spread)
             if hit then
-                Sprites.damage(hit, 5 * math.random(1, 3), player) -- dégâts aléatoires
+                Sprites.damage(hit, 5 * math.random(1, 3), player) -- Dégâts aléatoires
             end
         end
     end
 
+    -- Y a-t-il une cible dans le viseur ?
     local centerCol = math.floor(love.graphics.getWidth() / 2)
     targetInSight = Sprites.hitscan(player, Raycaster.zbuffer[centerCol] or math.huge) ~= nil
 
     Sprites.update(dt, player)
-    Hud.update(dt)
 end
 
 local function drawCrosshair()
@@ -168,17 +196,33 @@ function love.draw()
 
     -- La minimap
     if showMap then
-        Map.draw(0.25)
-        player:draw(0.25)
+        local scale = math.min(0.25, 240 / (Map.cols * Map.tileSize))
+        Map.draw(scale)
+        player:draw(scale)
     end
 
-    -- Les infos
+    -- Le HUD
     Hud.draw(player)
 
+    -- FPS et aide
     local w = love.graphics.getWidth()
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.printf("FPS: " .. love.timer.getFPS(), 0, 40, w - 10, "right")
-    love.graphics.printf("ZQSD : bouger   Souris : tourner   Clic/Ctrl : tirer\nTab : minimap   Échap : souris / quitter", 0, 58, w - 10, "right")
+    love.graphics.printf("ZQSD : bouger   Souris : tourner   Clic/Ctrl : tirer   E : utiliser\nTab : minimap   Échap : souris / quitter", 0, 58, w - 10, "right")
+ 
+    -- Écrans de fin
+    if gameState == "intermission" then
+        local stats = Sprites.stats
+        Hud.drawIntermission({
+            name = levelName,
+            kills = stats.kills, totalKills = stats.totalKills,
+            items = stats.items, totalItems = stats.totalItems,
+            time = levelTime,
+            last = levelIndex == #levels,
+        })
+    elseif gameState == "victory" then
+        Hud.drawVictory()
+    end
 end
 
 function love.keypressed(key)
@@ -188,9 +232,19 @@ function love.keypressed(key)
         else
             love.event.quit()
         end
-    elseif key == "space" and player.dead then
-        love.event.quit("restart") -- relance le jeu
     elseif key == "tab" then
         showMap = not showMap
+    elseif gameState == "intermission" and key == "space" then
+        if levelIndex < #levels then
+            startLevel(levelIndex + 1)
+        else
+            gameState = "victory"
+        end
+    elseif gameState == "victory" and key == "space" then
+        love.event.quit("restart")
+    elseif player.dead and key == "space" then
+        love.event.quit("restart")
+    elseif gameState == "playing" and not player.dead and (key == "e" or key == "space") then
+        use()
     end
 end

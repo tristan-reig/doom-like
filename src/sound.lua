@@ -12,6 +12,7 @@ local soundFiles = {
     playerDeath = "assets/sounds/dspldeth.wav",
     itemUp = "assets/sounds/dsitemup.wav",
     noAmmo = "assets/sounds/dsnoway.wav",
+    exitSwitch  = "assets/sounds/dsswtchx.wav",
 }
 
 local sources = {}

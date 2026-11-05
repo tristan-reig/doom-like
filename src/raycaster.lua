@@ -3,9 +3,9 @@ local Map = require("src.map")
 local Raycaster = {}
 
 Raycaster.fov = math.rad(66)
-Raycaster.fadeDist = 900     -- distance à laquelle l'assombrissement est maximal
+Raycaster.fadeDist = 900
 
-local floorShader -- shader du sol et du plafond, créé dans Raycaster.load()
+local floorShader -- shader du sol et du plafond
 
 -- Lance un rayon depuis (px, py) dans la direction "angle".
 function Raycaster.castRay(px, py, angle)
@@ -81,6 +81,8 @@ local textureFiles = {
     [2] = "assets/textures/w94_1.png",
     [3] = "assets/textures/wall54_1.png",
     [4] = "assets/textures/rw13_1.png",
+    [5] = "assets/textures/exit_off.png",
+    [6] = "assets/textures/exit_on.png",
 }
 
 -- Pour chaque texture : l'image + un "Quad" par colonne de pixels.

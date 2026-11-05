@@ -11,7 +11,7 @@ local effects = {
         return "Vous avez ramassé un stimpack."
     end,
 
-    medkit = function (p)
+    medikit = function (p)
         if p.health >= Pickups.maxHealth then return nil end
         local critical = p.health < 25
         p.health = math.min(Pickups.maxHealth, p.health + 25)
