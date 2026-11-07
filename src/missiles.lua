@@ -23,7 +23,7 @@ local function explode(Sprites, m, target, player)
         local dmg = Sprites.getDef(m).projectile.damage
         local amount = math.random(dmg[1], dmg[2])
         if target == player then
-            if Sprites.onPlayerHit then Sprites.onPlayerHit(amount) end
+            if Sprites.onPlayerHit then Sprites.onPlayerHit(amount, m.owner or m) end
         else
             Sprites.damage(target, amount, player)
         end

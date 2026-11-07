@@ -183,7 +183,7 @@ function AI.actions.shoot(s, player, Sprites)
     local dist = distance(s.x, s.y, player.x, player.y)
     local hitAngle = math.atan((player.radius or 12) / dist)
     if math.abs(spread) < hitAngle and Sprites.onPlayerHit then
-        Sprites.onPlayerHit(3 * math.random(1, 5)) -- dégâts aléatoires
+        Sprites.onPlayerHit(3 * math.random(1, 5), s) -- dégâts aléatoires
     end
 end
 
@@ -194,7 +194,7 @@ function AI.actions.impAttack(s, player, Sprites)
     local dist = distance(s.x, s.y, player.x, player.y)
     if def.meleeRange and dist < def.meleeRange + (player.radius or 12) then
         Sound.playAt("claw", s.x, s.y, player)
-        if Sprites.onPlayerHit then Sprites.onPlayerHit(3 * math.random(1, 8)) end
+        if Sprites.onPlayerHit then Sprites.onPlayerHit(3 * math.random(1, 8), s) end
     else
         Sound.playAt("fireballShoot", s.x, s.y, player)
         Sprites.spawnMissile("fireball", s, player.x, player.y)

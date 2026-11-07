@@ -8,6 +8,7 @@ local Hud = require("src.hud")
 local Pickups = require("src.pickups")
 local Level = require("src.level")
 local Doors = require("src.doors")
+local StatusBar = require("src.statusbar")
 
 local levels = {
     "levels/e1m1.txt",
@@ -34,11 +35,12 @@ local function setMouseCaptured(captured)
     love.mouse.setRelativeMode(captured)
 end
 
-local function damagePlayer(amount)
+local function damagePlayer(amount, source)
     if player.dead then return end
     amount = Pickups.absorb(player, amount)
     player.health = math.max(0, player.health - amount)
     Hud.hurt(amount)
+    StatusBar.hurt(amount, source, player)
     if player.health <= 0 then
         player.dead = true
         Sound.play("playerDeath")
@@ -107,6 +109,7 @@ function love.load()
     player.ammo = 20
 
     Hud.load()
+    StatusBar.load()
     Sprites.onPlayerHit = damagePlayer
     Sprites.onPickup = pickUp
     Raycaster.load()
@@ -160,10 +163,12 @@ function love.update(dt)
     local wantFire = not player.dead and mouseCaptured
         and (love.mouse.isDown(1) or love.keyboard.isDown("lctrl", "rctrl"))
 
+    -- Impossible de tirer sans cartouches
     if wantFire and player.ammo <= 0 and not weapon.firing and not wasPressingFire then
         Sound.play("noAmmo")
     end
     wasPressingFire = wantFire
+    StatusBar.update(dt, player, wantFire)
 
     if weapon:update(dt, player, wantFire and player.ammo > 0) then
         player.ammo = player.ammo - 1
@@ -230,6 +235,7 @@ function love.draw()
     end
 
     -- Le HUD
+    StatusBar.draw(player, { [3] = true }) -- Seul le fusil à pompe (slot 3) est disponbible pour l'instant
     Hud.draw(player)
 
     -- FPS et aide
@@ -237,7 +243,7 @@ function love.draw()
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.printf("FPS: " .. love.timer.getFPS(), 0, 40, w - 10, "right")
     love.graphics.printf("ZQSD : bouger   Souris : tourner   Clic/Ctrl : tirer   E : utiliser\nTab : minimap   Échap : souris / quitter", 0, 58, w - 10, "right")
- 
+
     -- Écrans de fin
     if gameState == "intermission" then
         local stats = Sprites.stats

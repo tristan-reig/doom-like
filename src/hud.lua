@@ -1,7 +1,7 @@
 local Hud = {}
 
 local bigFont, hugeFont, smallFont
-local flash = 0 -- intensité du flash
+local flash = 0 -- intensité du flash rouge
 local pickupFlash = 0 -- petit flash jaune quand on ramasse un objet
 local messageText, messageTime = nil, 0
 
@@ -11,10 +11,12 @@ function Hud.load()
     smallFont = love.graphics.newFont(18)
 end
 
+-- Le joueur vient de perdre des points de vie
 function Hud.hurt(amount)
     flash = math.min(1, flash + amount / 25)
 end
 
+-- Affiche un message en haut de l'écran
 function Hud.message(text)
     messageText = text
     messageTime = 3
@@ -53,38 +55,19 @@ function Hud.draw(player)
         love.graphics.rectangle("fill", 0, 0, w, h)
     end
 
-    -- Barre du bas : munitions à gauche, armure au milieu, santé à droite
-    love.graphics.setFont(bigFont)
-    local y = h - 50
-
-    levelColor(player.ammo or 0, 0, 5)
-    love.graphics.printf("MUNITIONS " .. (player.ammo or 0), 20, y, w, "left")
-
-    local armor = player.armor or 0
-    if armor > 0 then
-        love.graphics.setColor(0.5, 0.8, 1)
-    else
-        love.graphics.setColor(0.6, 0.6, 0.6)
-    end
-    love.graphics.printf("ARMURE " .. math.floor(armor) .. "%", 0, y, w, "center")
-
-    levelColor(player.health or 0, 25, 50)
-    love.graphics.printf("SANTÉ " .. math.floor(player.health or 0) .. "%", 0, y, w - 20, "right")
-
     if messageText and messageTime > 0 then
         love.graphics.setFont(smallFont)
-        love.graphics.setColor(1, 1, 1, math.min(1, messageTime))
+        love.graphics.setColor(1, 1, 1, math.min(1, messageTime)) -- s'efface à la fin
         love.graphics.printf(messageText, 0, 12, w, "center")
     end
 
-    -- Écran de game over
+    -- Écran de mort
     if player.dead then
         love.graphics.setColor(0.4, 0, 0, 0.55)
         love.graphics.rectangle("fill", 0, 0, w, h)
         love.graphics.setColor(1, 1, 1)
         love.graphics.setFont(hugeFont)
         love.graphics.printf("VOUS ÊTES MORT", 0, h / 2 - 60, w, "center")
-
         love.graphics.setFont(smallFont)
         love.graphics.printf("Appuyez sur Espace pour recommencer", 0, h / 2 + 10, w, "center")
     end

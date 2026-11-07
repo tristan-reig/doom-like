@@ -215,7 +215,7 @@ function Sprites.radiusDamage(source, power, player)
         local dist = math.sqrt((player.x - source.x) ^ 2 + (player.y - source.y) ^ 2)
         dist = math.max(0, dist - (player.radius or 12))
         local dmg = power - dist * 2
-        if dmg > 0 then Sprites.onPlayerHit(math.floor(dmg)) end
+        if dmg > 0 then Sprites.onPlayerHit(math.floor(dmg), source) end
     end
 end
 
