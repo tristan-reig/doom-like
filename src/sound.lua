@@ -15,6 +15,13 @@ local soundFiles = {
     exitSwitch  = "assets/sounds/dsswtchx.wav",
     doorOpen = "assets/sounds/dsdoropn.wav",
     doorClose = "assets/sounds/dsdorcls.wav",
+    impSight1 = "assets/sounds/dsbgsit1.wav",
+    impSight2 = "assets/sounds/dsbgsit2.wav",
+    impDeath1 = "assets/sounds/dsbgdth1.wav",
+    impDeath2 = "assets/sounds/dsbgdth2.wav",
+    claw = "assets/sounds/dsclaw.wav",
+    fireballShoot = "assets/sounds/dsfirsht.wav",
+    fireballHit = "assets/sounds/dsfirxpl.wav",
 }
 
 local sources = {}

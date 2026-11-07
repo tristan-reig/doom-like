@@ -6,13 +6,13 @@ M......MMMDMMMMMMMMDMMMM
 M.......Z........M.....M
 M..+.........L...M..S..M
 MMMMDMMMMMMMM....M.....M
-M.......T...M....M..Z..M
+M.......T...M....M..I..M
 M..Z....T.H.M....MMDMMMM
 M.......T...M..........M
 M..bb...T...MMMM..Z....M
 M.......T..............M
 MTTTTTTTTDTTTTTTDTTTTTTM
-M..A.....Z.....c.....Z.M
+M..A.....I.....c.....I.M
 M..........b...........M
-M...l.......Z.......l..E
+M...l.......I.......l..E
 MMMMMMMMMMMMMMMMMMMMMMMM

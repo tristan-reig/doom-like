@@ -14,6 +14,8 @@ Fichiers (dossier sprites/ de Freedoom) :
   stima0.png, media0.png   (stimpack, trousse de soins)
   shela0.png, sboxa0.png   (cartouches, boîte de cartouches)
   arm1a0.png, arm1b0.png   (armure)
+  trooa1.png à troou0.png  (imp)
+  bal1a0.png à bal1e0.png  (boule de feu)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 

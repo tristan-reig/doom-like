@@ -1,89 +1,25 @@
 local Map = require("src.map")
 local Sound = require("src.sound")
-local offsets = require("src.sprite_offsets")
+local SpriteImages = require("src.sprite_images")
+local SpriteRender = require("src.sprite_render")
+local Missiles = require("src.missiles")
 local AI = require("src.ai")
 local Noise = require("src.noise")
 
 local Sprites = {}
 
--- Taille d'un pixel de sprite en unités monde.
-Sprites.unitsPerPixel = 0.5
-
 local TIC = 1 / 35
 
--- Types d'objets.
-local typeDefs = {
-    barrel = {
-        health = 20, radius = 6, solid = true,
-        states = {
-            idle = { { "bar1a0", -1 } },
-            death = {
-                { "bexpa0", 5 },
-                { "bexpb0", 5, sound = "barrel" },
-                { "bexpc0", 5, bright = true, explode = true, notSolid = true },
-                { "bexpd0", 10, bright = true },
-                { "bexpe0", 10, bright = true },
-                { "bexpe0", 0, remove = true },
-            },
-        },
-    },
-    zombie = {
-        health = 20, radius = 10, solid = true, painChance = 200 / 256,
-        monster = true, speed = 35, sightSound = "zombieSight",
-        states = {
-            -- repos (cherche le joueur)
-            idle = { { "possa", 10, action = "look" }, { "possb", 10, action = "look" }, loop = true },
-            -- poursuite
-            chase = {
-                { "possa", 4, action = "chase" }, { "possa", 4, action = "chase" },
-                { "possb", 4, action = "chase" }, { "possb", 4, action = "chase" },
-                { "possc", 4, action = "chase" }, { "possc", 4, action = "chase" },
-                { "possd", 4, action = "chase" }, { "possd", 4, action = "chase" },
-                loop = true,
-            },
-            -- animation de tir
-            missile = {
-                { "posse", 10, action = "face" },
-                { "possf", 8, bright = true, action = "shoot" },
-                { "posse", 8 },
-                next = "chase",
-            },
-            pain = { { "possg", 3 }, { "possg", 3, sound = "zombiePain" }, next = "chase" },
-            death = {
-                { "possh0", 5 },
-                { "possi0", 5, sound = "zombieDeath" },
-                { "possj0", 5, notSolid = true },
-                { "possk0", 5 },
-                { "possl0", -1 },
-            },
-            -- mort violente (quand il prend beaucoup de dégâts d'un coup)
-            gib = {
-                { "possm0", 5 },
-                { "possn0", 5, sound = "gib" },
-                { "posso0", 5, notSolid = true },
-                { "possp0", 5 }, { "possq0", 5 }, { "possr0", 5 },
-                { "posss0", 5 }, { "posst0", 5 },
-                { "possu0", -1 },
-            },
-        },
-    },
-    stimpack = { radius = 10, pickup = "stimpack", states = { idle = { { "stima0", -1 } } } },
-    medikit = { radius = 10, pickup = "medikit",  states = { idle = { { "media0", -1 } } } },
-    shells = { radius = 10, pickup = "shells",   states = { idle = { { "shela0", -1 } } } },
-    shellBox = { radius = 10, pickup = "shellBox", states = { idle = { { "sboxa0", -1 } } } },
-    armor = {
-        radius = 10, pickup = "armor",
-        states = { idle = { { "arm1a0", 6 }, { "arm1b0", 6, bright = true }, loop = true } },
-    },
+local typeDefs = {}
+for _, category in ipairs({ "monsters", "projectiles", "items", "decorations" }) do
+    for name, def in pairs(require("src.things." .. category)) do
+        assert(not typeDefs[name], "Type défini deux fois : " .. name)
+        typeDefs[name] = def
+    end
+end
 
-    lamp = { radius = 8, solid = true, states = { idle = { { "colua0", -1 } } } },
-    tallLamp = { radius = 8, solid = true, states = { idle = { { "tlmpa0", -1 } } } },
-    column = { radius = 8, solid = true, states = { idle = { { "col1a0", -1 } } } },
-}
-
-local images = {}
 Sprites.list = {}
-
+-- Statistiques du niveau
 Sprites.stats = { kills = 0, totalKills = 0, items = 0, totalItems = 0 }
 
 function Sprites.clear()
@@ -103,45 +39,19 @@ function Sprites.countTotals()
     end
 end
 
-local function isRotated(name)
-    return not name:match("%d$")
-end
-
-local function loadImage(name)
-    if images[name] then return end
-    local img = love.graphics.newImage("assets/sprites/" .. name .. ".png")
-    img:setFilter("nearest", "nearest")
-    local iw, ih = img:getDimensions()
-
-    local quads = {}
-    for col = 0, iw - 1 do
-        quads[col] = love.graphics.newQuad(col, 0, 1, ih, iw, ih)
-    end
-
-    local off = offsets[name] or { iw / 2, ih }
-
-    images[name] = { image = img, quads = quads, width = iw, height = ih, offX = off[1], offY = off[2] }
-end
-
 function Sprites.load()
-    for _, def in pairs(typeDefs) do
-        for _, state in pairs(def.states) do
-            for _, frame in ipairs(state) do
-                if isRotated(frame[1]) then
-                    for rot = 1, 8 do loadImage(frame[1] .. rot) end
-                else
-                    loadImage(frame[1])
-                end
-            end
-        end
-    end
+    SpriteImages.loadAll(typeDefs)
 end
 
 -- Applique les effets de l'image courante
 local function enterFrame(s, player)
     local frame = typeDefs[s.type].states[s.state][s.frameIndex]
     s.frame = frame
-    if frame.sound then Sound.playAt(frame.sound, s.x, s.y, player) end
+    if frame.sound then
+        local snd = frame.sound
+        if type(snd) == "table" then snd = snd[math.random(#snd)] end
+        Sound.playAt(snd, s.x, s.y, player)
+    end
     if frame.notSolid then s.solid = false end
     if frame.explode then Sprites.radiusDamage(s, 128, player) end
     if frame.remove then s.removed = true end
@@ -152,6 +62,10 @@ function Sprites.getDef(s)
     return typeDefs[s.type]
 end
 
+function Sprites.getDefByName(typeName)
+    return typeDefs[typeName]
+end
+
 function Sprites.setState(s, stateName, player)
     s.state = stateName
     s.frameIndex = 1
@@ -159,6 +73,7 @@ function Sprites.setState(s, stateName, player)
     enterFrame(s, player)
 end
 
+-- Ajoute un objet dans la carte.
 function Sprites.add(typeName, col, row, angle)
     return Sprites.spawn(typeName, (col - 0.5) * Map.tileSize, (row - 0.5) * Map.tileSize, angle)
 end
@@ -183,6 +98,10 @@ function Sprites.spawn(typeName, x, y, angle)
     s.frame = def.states.idle[1]
     table.insert(Sprites.list, s)
     return s
+end
+-- Lance un projectile depuis l'objet "owner" vers le point
+function Sprites.spawnMissile(typeName, owner, tx, ty, spread)
+    return Missiles.spawn(Sprites, typeName, owner, tx, ty, spread)
 end
 
 -- Fait avancer les animations et retire les objets détruits
@@ -210,6 +129,11 @@ function Sprites.update(dt, player)
         if s.state == "chase" and not s.dead and not s.removed then
             AI.move(s, dt, player, Sprites)
         end
+
+        -- Les projectiles en vol avancent
+        if s.vx and s.state == "idle" and not s.removed then
+            Missiles.move(Sprites, s, dt, player)
+        end
     end
 
     -- Le joueur ramasse les objets sur lesquels il marche
@@ -219,7 +143,10 @@ function Sprites.update(dt, player)
             if kind and not s.removed then
                 local r = (player.radius or 12) + typeDefs[s.type].radius
                 if (s.x - player.x) ^ 2 + (s.y - player.y) ^ 2 < r * r then
-                    if Sprites.onPickup(kind) then s.removed = true end
+                    if Sprites.onPickup(kind) then
+                        s.removed = true
+                        if s.countsAsItem then Sprites.stats.items = Sprites.stats.items + 1 end
+                    end
                 end
             end
         end
@@ -235,7 +162,7 @@ end
 function Sprites.damage(s, amount, player)
     local def = typeDefs[s.type]
     if s.dead or not s.health then return end
-
+ 
     s.health = s.health - (amount or 10)
     if s.health <= 0 then
         s.dead = true
@@ -247,7 +174,7 @@ function Sprites.damage(s, amount, player)
             Sprites.setState(s, "death", player)
         end
     else
-        -- Si le monstre est blessé, il se réveille directement
+        -- Un monstre est blessé en sommeil, il se réveille directement
         if def.monster and not s.awake then
             s.awake = true
             s.reactionTime = 0
@@ -265,7 +192,7 @@ function Sprites.alert(player)
     for _, s in ipairs(Sprites.list) do
         if typeDefs[s.type].monster and not s.dead and not s.awake 
             and Noise.heard(reached, s.x, s.y) then
-                AI.wake(s, player, Sprites)
+            AI.wake(s, player, Sprites)
         end
     end
 end
@@ -332,14 +259,6 @@ function Sprites.collide(player, oldX, oldY)
     player.x, player.y = newX, newY
 end
 
--- Choisit l'image d'un sprite à 8 directions selon l'angle.
-local function rotationFor(s, player)
-    local toViewer = math.atan2(player.y - s.y, player.x - s.x)
-    local rel = toViewer - s.angle
-    local idx = math.floor((-rel + math.pi / 8) / (math.pi / 4)) % 8
-    return idx + 1
-end
-
 -- Quelqu'un se trouve-t-il dans la case (col, row) ?
 function Sprites.cellOccupied(col, row, player)
     local ts = Map.tileSize
@@ -354,66 +273,9 @@ function Sprites.cellOccupied(col, row, player)
     return false
 end
 
--- Dessine tous les objets.
+-- Dessine tous les objets
 function Sprites.draw(player, zbuffer, projDist, fadeDist, doorbuffer, pass)
-    local w, h = love.graphics.getDimensions()
-    local halfW, halfH = w / 2, h / 2
-    local camHeight = Map.tileSize / 2
-    local cos, sin = math.cos(player.angle), math.sin(player.angle)
-    local upp = Sprites.unitsPerPixel
-
-    -- Passer chaque objet dans le repère caméra
-    local visible = {}
-    for _, s in ipairs(Sprites.list) do
-        local dx, dy = s.x - player.x, s.y - player.y
-        local depth = dx * cos + dy * sin
-        local side = -dx * sin + dy * cos
-        if depth > 1 then
-            table.insert(visible, { sprite = s, depth = depth, side = side })
-        end
-    end
-
-    -- Trier du plus loin au plus proche
-    table.sort(visible, function(a, b) return a.depth > b.depth end)
-
-    -- Dessiner
-    for _, v in ipairs(visible) do
-        local s = v.sprite
-        local name = s.frame[1]
-        if isRotated(name) then name = name .. rotationFor(s, player) end
-        local t = images[name]
-
-        local scale = projDist / v.depth
-        local pxScale = upp * scale
-        local spriteW = t.width * pxScale
-        local spriteH = t.height * pxScale
-
-        local centerX = halfW + v.side * scale
-        local floorY = halfH + camHeight * scale
-        local left = centerX - t.offX * pxScale
-        local top = floorY - t.offY * pxScale
-
-        local shade = s.frame.bright and 1 or math.max(0.25, 1 - v.depth / fadeDist)
-        love.graphics.setColor(shade, shade, shade)
-
-        local firstCol = math.max(0, math.floor(left))
-        local lastCol = math.min(w - 1, math.ceil(left + spriteW) - 1)
-        for sx = firstCol, lastCol do
-            local shown = v.depth < zbuffer[sx]
-            local door = doorbuffer and doorbuffer[sx]
-            if pass == "behind" then
-                shown = shown and (not door or v.depth > door)
-            elseif pass == "front" then
-                shown = door and v.depth < door
-            end
-            if shown then
-                local texCol = math.floor((sx - left) / spriteW * t.width)
-                if texCol >= 0 and texCol < t.width then
-                    love.graphics.draw(t.image, t.quads[texCol], sx, top, 0, 1, spriteH / t.height)
-                end
-            end
-        end
-    end
+    SpriteRender.draw(Sprites.list, typeDefs, player, zbuffer, projDist, fadeDist, doorbuffer, pass)
 end
 
 return Sprites

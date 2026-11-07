@@ -16,6 +16,7 @@ local walls = {
 -- Objets et monstres
 local things = {
     ["Z"] = "zombie",
+    ["I"] = "imp",
     ["b"] = "barrel",
     ["l"] = "lamp",
     ["L"] = "tallLamp",

@@ -17,6 +17,11 @@ Fichiers (dossier sounds/ de Freedoom) :
   dsswtchx.wav  (interrupteur de sortie)
   dsdoropn.wav  (porte qui s'ouvre)
   dsdorcls.wav  (porte qui se ferme)
+  dsbgsit1.wav, dsbgsit2.wav  (imp qui repère le joueur)
+  dsbgdth1.wav, dsbgdth2.wav  (mort de l'imp)
+  dsclaw.wav    (griffe)
+  dsfirsht.wav  (boule de feu lancée)
+  dsfirxpl.wav  (boule de feu qui explose)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 
