@@ -2,6 +2,7 @@ local Map = require("src.map")
 local Sound = require("src.sound")
 local offsets = require("src.sprite_offsets")
 local AI = require("src.ai")
+local Noise = require("src.noise")
 
 local Sprites = {}
 
@@ -259,12 +260,12 @@ function Sprites.damage(s, amount, player)
     end
 end
 
-function Sprites.alert(player, radius)
-    radius = radius or 1000
+function Sprites.alert(player)
+    local reached = Noise.propagate(player.x, player.y)
     for _, s in ipairs(Sprites.list) do
-        if typeDefs[s.type].monster and not s.dead and not s.awake then
-            local dist = math.sqrt((s.x - player.x) ^ 2 + (s.y - player.y) ^ 2)
-            if dist < radius then AI.wake(s, player, Sprites) end
+        if typeDefs[s.type].monster and not s.dead and not s.awake 
+            and Noise.heard(reached, s.x, s.y) then
+                AI.wake(s, player, Sprites)
         end
     end
 end
