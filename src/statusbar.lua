@@ -1,3 +1,5 @@
+local Pickups = require("src.pickups")
+
 local StatusBar = {}
 
 local TIC = 1 / 35
@@ -71,7 +73,12 @@ local face = {
     hurtFace = nil,
     ouchTimer = 0,
     fireTime = 0,
+    evilTimer = 0,
 }
+
+function StatusBar.grin()
+    face.evilTimer = 2
+end
 
 function StatusBar.hurt(amount, source, player)
     if amount > 20 then
@@ -110,6 +117,7 @@ local function faceImage(player)
     local health = math.max(0, math.min(100, player.health))
     local pain = math.min(4, math.floor((100 - health) * 5 / 101))
 
+    if face.evilTimer > 0 then return "stfevl" .. pain end
     if face.ouchTimer > 0 then return "stfouch" .. pain end
     if face.hurtTimer > 0 then
         if face.hurtFace == "front" then return "stfkill" .. pain end
@@ -141,7 +149,7 @@ function StatusBar.height()
     return 32 * love.graphics.getWidth() / 320
 end
 
-function StatusBar.draw(player, ownedWeapons)
+function StatusBar.draw(player, ownedWeapons, currentAmmo)
     local w, h = love.graphics.getDimensions()
     local s = w / 320
     local ox, oy = 0, h - 200 * s
@@ -150,8 +158,8 @@ function StatusBar.draw(player, ownedWeapons)
     draw("stbar", 0, 168, s, ox, oy)
     draw("starms", 104, 168, s, ox, oy)
 
-    -- Munitions de l'arme courante, santé, armure
-    drawNumber("sttnum", player.ammo or 0, 44, 171, s, ox, oy)
+    -- Munitions de l'arme en main, santé et armure
+    drawNumber("sttnum", currentAmmo or 0, 44, 171, s, ox, oy)
     drawNumber("sttnum", player.health or 0, 90, 171, s, ox, oy)
     draw("sttprcnt", 90, 171, s, ox, oy)
     drawNumber("sttnum", player.armor or 0, 221, 171, s, ox, oy)
@@ -164,15 +172,15 @@ function StatusBar.draw(player, ownedWeapons)
         draw(prefix .. slot, 111 + (i % 3) * 12, 172 + math.floor(i / 3) * 10, s, ox, oy)
     end
 
-    -- Le visage
+    -- Visage du personnage
     local name = faceImage(player)
     local off = faceOffsets[name] or { 0, 0 }
     draw(name, 143 - off[1], 168 - off[2], s, ox, oy)
 
     -- Tableau des munitions
     local ammo = {
-        { 0, 200 },
-        { player.ammo or 0, player.maxAmmo or 50 },
+        { player.ammo.bullets, Pickups.maxAmmo.bullets },
+        { player.ammo.shells, Pickups.maxAmmo.shells },
         { 0, 50 },
         { 0, 300 },
     }

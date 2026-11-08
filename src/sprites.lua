@@ -143,7 +143,7 @@ function Sprites.update(dt, player)
             if kind and not s.removed then
                 local r = (player.radius or 12) + typeDefs[s.type].radius
                 if (s.x - player.x) ^ 2 + (s.y - player.y) ^ 2 < r * r then
-                    if Sprites.onPickup(kind) then
+                    if Sprites.onPickup(kind, s.dropped) then
                         s.removed = true
                         if s.countsAsItem then Sprites.stats.items = Sprites.stats.items + 1 end
                     end
@@ -162,12 +162,12 @@ end
 function Sprites.damage(s, amount, player)
     local def = typeDefs[s.type]
     if s.dead or not s.health then return end
- 
+
     s.health = s.health - (amount or 10)
     if s.health <= 0 then
         s.dead = true
         if def.monster then Sprites.stats.kills = Sprites.stats.kills + 1 end
-        if def.drop then Sprites.spawn(def.drop, s.x, s.y) end
+        if def.drop then Sprites.spawn(def.drop, s.x, s.y).dropped = true end
         if def.states.gib and s.health < -def.health then
             Sprites.setState(s, "gib", player)
         else

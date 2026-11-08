@@ -20,6 +20,7 @@ local weapon
 local showMap = true
 local targetInSight = false
 local wasPressingFire = false
+local weaponDefs = Weapon.defs
 
 local gameState = "playing"
 local levelIndex = 1
@@ -49,12 +50,77 @@ local function damagePlayer(amount, source)
     end
 end
 
-local function pickUp(kind)
-    local message = Pickups.apply(player, kind)
+local function pickUp(kind, dropped)
+    local message, newWeapon = Pickups.apply(player, kind, dropped)
     if not message then return false end
-    Sound.play("itemUp")
     Hud.message(message)
+    if newWeapon then
+        Sound.play("weaponUp")
+        StatusBar.grin()
+        weapon:select(newWeapon)
+    else
+        Sound.play("itemUp")
+    end
     return true
+end
+
+-- Assez de munitions pour tirer avec cette arme ?
+local function canFire(def)
+    return player.ammo[def.ammo] >= 1
+end
+
+-- Conséquences du tirs
+local function onFire(def, refire)
+    player.ammo[def.ammo] = player.ammo[def.ammo] - 1
+    Sound.play(def.sound)
+    Sprites.alert(player)
+    for _ = 1, def.shot.pellets do
+        local spread = 0
+        -- Le premier tir du pistolet est très précis
+        if not (def.shot.accurateFirst and not refire) then
+            spread = (math.random() - math.random()) * math.rad(def.shot.spread)
+        end
+        local wallDist = Raycaster.castRay(player.x, player.y, player.angle + spread)
+        local hit = Sprites.hitscan(player, wallDist, spread)
+        if hit then
+            Sprites.damage(hit, 5 * math.random(1, 3), player)
+        end
+    end
+end
+
+-- Changement vers la meilleure arme avec des munitions
+local function switchToBestWeapon()
+    for _, name in ipairs(weaponDefs.order) do
+        if player.weapons[name] and name ~= weapon.current and canFire(weaponDefs[name]) then
+            weapon:select(name)
+            return
+        end
+    end
+end
+
+-- Choisir l'arme d'un slot
+local function selectSlot(slot)
+    for _, name in ipairs(weaponDefs.order) do
+        if weaponDefs[name].slot == slot and player.weapons[name] then
+            weapon:select(name)
+        end
+    end
+end
+
+-- Passage à l'arme suivante / précédente
+local function cycleWeapon(direction)
+    local owned = {}
+    for _, name in ipairs(weaponDefs.order) do
+        if player.weapons[name] then table.insert(owned, name) end
+    end
+    table.sort(owned, function(a, b) return weaponDefs[a].slot < weaponDefs[b].slot end)
+    local target = weapon.pending or weapon.current
+    for i, name in ipairs(owned) do
+        if name == target then
+            weapon:select(owned[(i - 1 + direction) % #owned + 1])
+            return
+        end
+    end
 end
 
 -- Charge et démarre le niveau
@@ -106,7 +172,8 @@ function love.load()
     player.health = 100
     player.dead = false
     player.armor = 0
-    player.ammo = 20
+    player.ammo = { bullets = 50, shells = 0 }
+    player.weapons = { pistol = true }
 
     Hud.load()
     StatusBar.load()
@@ -115,7 +182,7 @@ function love.load()
     Raycaster.load()
     Sprites.load()
     Sound.load()
-    weapon = Weapon.new()
+    weapon = Weapon.new("pistol")
 
     startLevel(1)
     setMouseCaptured(true)
@@ -164,25 +231,14 @@ function love.update(dt)
         and (love.mouse.isDown(1) or love.keyboard.isDown("lctrl", "rctrl"))
 
     -- Impossible de tirer sans cartouches
-    if wantFire and player.ammo <= 0 and not weapon.firing and not wasPressingFire then
-        Sound.play("noAmmo")
+    if wantFire and weapon.state == "ready" and not canFire(weapon:def()) and not weapon.pending then
+        if not wasPressingFire then Sound.play("noAmmo") end
+        switchToBestWeapon()
     end
     wasPressingFire = wantFire
     StatusBar.update(dt, player, wantFire)
 
-    if weapon:update(dt, player, wantFire and player.ammo > 0) then
-        player.ammo = player.ammo - 1
-        Sound.play("shotgun")
-        Sprites.alert(player)
-        for _ = 1, 7 do
-            local spread = (math.random() - math.random()) * math.rad(5.6)
-            local wallDist = Raycaster.castRay(player.x, player.y, player.angle + spread)
-            local hit = Sprites.hitscan(player, wallDist, spread)
-            if hit then
-                Sprites.damage(hit, 5 * math.random(1, 3), player) -- Dégâts aléatoires
-            end
-        end
-    end
+    weapon:update(dt, player, wantFire, canFire, onFire)
 
     -- Y a-t-il une cible dans le viseur ?
     local centerCol = math.floor(love.graphics.getWidth() / 2)
@@ -235,7 +291,9 @@ function love.draw()
     end
 
     -- Le HUD
-    StatusBar.draw(player, { [3] = true }) -- Seul le fusil à pompe (slot 3) est disponbible pour l'instant
+    local ownedSlots = {}
+    for name in pairs(player.weapons) do ownedSlots[weaponDefs[name].slot] = true end
+    StatusBar.draw(player, ownedSlots, player.ammo[weapon:def().ammo])
     Hud.draw(player)
 
     -- FPS et aide
@@ -259,7 +317,19 @@ function love.draw()
     end
 end
 
-function love.keypressed(key)
+function love.wheelmoved(x, y)
+    if gameState == "playing" and not player.dead and y ~= 0 then
+        cycleWeapon(y > 0 and 1 or -1)
+    end
+end
+
+function love.keypressed(key, scancode)
+    local slot = tonumber(scancode)
+    if slot and slot >= 1 and slot <= 7 and gameState == "playing" and not player.dead then
+        selectSlot(slot)
+        return
+    end
+
     if key == "escape" then
         if mouseCaptured then
             setMouseCaptured(false)

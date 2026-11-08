@@ -1,26 +1,13 @@
+local defs = require("src.things.weapons")
+
 local Weapon = {}
 Weapon.__index = Weapon
 
 local TIC = 1 / 35
+local MOVE_SPEED = 6 * 35 -- vitesse pour changer d'arme
+local LOWERED = 96
 
-local frameDefs = {
-    A = { file = "shtga0", x = 123, y = 139 }, -- repos
-    B = { file = "shtgb0", x = 74,  y = 91  }, -- pompe 1
-    C = { file = "shtgc0", x = 35,  y = 59  }, -- pompe 2
-    D = { file = "shtgd0", x = 43,  y = 81  }, -- pompe 3
-}
-local flashDefs = {
-    { file = "shtfa0", x = 143, y = 130, tics = 4 },
-    { file = "shtfb0", x = 132, y = 122, tics = 3 },
-}
-
--- Séquence de tir
-local fireSequence = {
-    { "A", 3 },
-    { "A", 7, fire = true },
-    { "B", 3 }, { "C", 5 }, { "D", 4 }, { "C", 5 }, { "B", 5 },
-    { "A", 3 }, { "A", 7 },
-}
+Weapon.defs = defs
 
 local function loadImage(name)
     local img = love.graphics.newImage("assets/sprites/" .. name .. ".png")
@@ -28,23 +15,29 @@ local function loadImage(name)
     return img
 end
 
-function Weapon.new()
+function Weapon.new(startWeapon)
     local self = setmetatable({}, Weapon)
 
     self.images = {}
-    for key, def in pairs(frameDefs) do
-        self.images[key] = loadImage(def.file)
-    end
-    for _, def in ipairs(flashDefs) do
-        def.image = loadImage(def.file)
+    for _, name in ipairs(defs.order) do
+        local def = defs[name]
+        for _, f in pairs(def.frames) do self.images[f[1]] = loadImage(f[1]) end
+        for _, flash in ipairs(def.flashes) do
+            for _, f in ipairs(flash) do self.images[f[1]] = loadImage(f[1]) end
+        end
     end
 
+    self.current = startWeapon
+    self.pending = nil
+    self.state = "ready"
+    self.lowerY = 0
     self.firing = false
+    self.refire = false
     self.seqIndex = 1
     self.seqTimer = 0
-    self.flashTime = nil -- pas de flash en cours
+    self.flash = nil
 
-    -- Balancement de l'arme en marchant
+    -- Balancement de l'arme quand on marche
     self.bobPhase = 0
     self.bobAmount = 0
     self.lastX, self.lastY = nil, nil
@@ -52,62 +45,107 @@ function Weapon.new()
     return self
 end
 
--- Renvoie vrai au moment ou le coup part
-function Weapon:update(dt, player, wantFire)
-    local fired = false
+function Weapon:def()
+    return defs[self.current]
+end
 
+-- Changement d'arme
+function Weapon:select(name)
+    if name ~= self.current or self.state == "lowering" then
+        self.pending = name
+    end
+end
+
+-- Renvoie vrai quand le coup part
+function Weapon:update(dt, player, wantFire, canFire, onFire)
     if self.lastX then
         local moved = math.sqrt((player.x - self.lastX) ^ 2 + (player.y - self.lastY) ^ 2)
         local target = (moved > 0.01) and 1 or 0
-        -- On fait varier l'amplitude en douceur
         self.bobAmount = self.bobAmount + (target - self.bobAmount) * math.min(1, dt * 8)
-        if target == 1 then
-            self.bobPhase = self.bobPhase + dt * 8
-        end
+        if target == 1 then self.bobPhase = self.bobPhase + dt * 8 end
     end
     self.lastX, self.lastY = player.x, player.y
 
-    -- Démarrer un tir
-    if not self.firing and wantFire then
-        self.firing = true
-        self.seqIndex = 1
-        self.seqTimer = 0
+    -- Flash du coup de feu
+    if self.flash then
+        self.flash.time = self.flash.time + dt
+        local total = 0
+        for _, f in ipairs(self.flash.list) do total = total + f[4] * TIC end
+        if self.flash.time >= total then self.flash = nil end
     end
 
-    -- Faire avancer l'animation de tir
-    if self.firing then
+    local def = self:def()
+
+    if self.state == "ready" then
+        if self.pending then
+            self.state = "lowering"
+        elseif wantFire and canFire(def) then
+            self:startFiring(def, player, canFire, onFire, false)
+        end
+
+    elseif self.state == "firing" then
         self.seqTimer = self.seqTimer + dt
-        while self.firing and self.seqTimer >= fireSequence[self.seqIndex][2] * TIC do
-            self.seqTimer = self.seqTimer - fireSequence[self.seqIndex][2] * TIC
+        while self.state == "firing" and self.seqTimer >= def.fire[self.seqIndex][2] * TIC do
+            self.seqTimer = self.seqTimer - def.fire[self.seqIndex][2] * TIC
             self.seqIndex = self.seqIndex + 1
-            if self.seqIndex > #fireSequence then
-                self.firing = false
-                self.seqIndex = 1
-            elseif fireSequence[self.seqIndex].fire then
-                fired = true
-                self.flashTime = 0
+            if self.seqIndex > #def.fire then
+                if wantFire and canFire(def) and not self.pending then
+                    self:startFiring(def, player, canFire, onFire, true)
+                else
+                    self.state = "ready"
+                    self.seqIndex = 1
+                    self.refire = false
+                end
+            else
+                self:enterFrame(def, canFire, onFire)
             end
+        end
+
+    elseif self.state == "lowering" then
+        self.lowerY = self.lowerY + MOVE_SPEED * dt
+        if self.lowerY >= LOWERED then
+            self.lowerY = LOWERED
+            self.current = self.pending
+            self.pending = nil
+            self.state = "raising"
+        end
+
+    elseif self.state == "raising" then
+        self.lowerY = self.lowerY - MOVE_SPEED * dt
+        if self.lowerY <= 0 then
+            self.lowerY = 0
+            self.state = "ready"
         end
     end
 
-    -- Faire avancer le flash
-    if self.flashTime then
-        self.flashTime = self.flashTime + dt
-        local total = 0
-        for _, f in ipairs(flashDefs) do total = total + f.tics * TIC end
-        if self.flashTime >= total then self.flashTime = nil end
-    end
+    self.firing = (self.state == "firing")
+end
 
-    return fired
+function Weapon:startFiring(def, player, canFire, onFire, refire)
+    self.state = "firing"
+    self.refire = refire
+    self.seqIndex = 1
+    self.seqTimer = 0
+    self:enterFrame(def, canFire, onFire)
+end
+
+function Weapon:enterFrame(def, canFire, onFire)
+    local frame = def.fire[self.seqIndex]
+    if frame.fire and canFire(def) then
+        onFire(def, self.refire)
+        if frame.flash then
+            self.flash = { list = def.flashes[frame.flash], time = 0 }
+        end
+    end
 end
 
 -- Affichage du flash
 function Weapon:currentFlash()
-    if not self.flashTime then return nil end
+    if not self.flash then return nil end
     local t = 0
-    for _, f in ipairs(flashDefs) do
-        t = t + f.tics * TIC
-        if self.flashTime < t then return f end
+    for _, f in ipairs(self.flash.list) do
+        t = t + f[4] * TIC
+        if self.flash.time < t then return f end
     end
     return nil
 end
@@ -122,23 +160,24 @@ function Weapon:draw()
 
     -- Pas de balancement pendant le tir
     local bobX, bobY = 0, 0
-    if not self.firing then
+    if self.state == "ready" then
         bobX = math.cos(self.bobPhase) * 6 * self.bobAmount
         bobY = math.abs(math.sin(self.bobPhase)) * 6 * self.bobAmount
     end
 
     love.graphics.setColor(1, 1, 1)
 
-    local key = fireSequence[self.seqIndex][1]
-    local def = frameDefs[key]
-    local sx, sy = toScreen(def.x + bobX, def.y + bobY)
-    love.graphics.draw(self.images[key], sx, sy, 0, scale, scale)
+    local def = self:def()
+    local key = (self.state == "firing") and def.fire[self.seqIndex][1] or def.fire[1][1]
+    local f = def.frames[key]
+    local sx, sy = toScreen(f[2] + bobX, f[3] + bobY + self.lowerY)
+    love.graphics.draw(self.images[f[1]], sx, sy, 0, scale, scale)
 
     -- Le flash est dessiné par-dessus l'arme
     local flash = self:currentFlash()
     if flash then
-        local fx, fy = toScreen(flash.x, flash.y)
-        love.graphics.draw(flash.image, fx, fy, 0, scale, scale)
+        local fx, fy = toScreen(flash[2], flash[3] + self.lowerY)
+        love.graphics.draw(self.images[flash[1]], fx, fy, 0, scale, scale)
     end
 end
 

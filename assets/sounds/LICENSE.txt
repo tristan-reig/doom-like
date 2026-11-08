@@ -22,6 +22,7 @@ Fichiers (dossier sounds/ de Freedoom) :
   dsclaw.wav    (griffe)
   dsfirsht.wav  (boule de feu lancée)
   dsfirxpl.wav  (boule de feu qui explose)
+  dswpnup.wav   (arme ramassée)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 

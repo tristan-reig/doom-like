@@ -26,6 +26,10 @@ local things = {
     ["s"] = "shells",
     ["S"] = "shellBox",
     ["A"] = "armor",
+    ["a"] = "clip",
+    ["m"] = "ammoBox",
+    ["3"] = "shotgunPickup",
+    ["4"] = "chaingunPickup",
 }
 
 -- Départ du joueur
