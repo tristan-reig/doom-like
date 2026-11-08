@@ -1,5 +1,5 @@
-local Map = require("src.map")
-local Doors = require("src.doors")
+local Map = require("src.world.map")
+local Doors = require("src.world.doors")
 
 local Level = {}
 

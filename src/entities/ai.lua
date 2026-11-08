@@ -1,7 +1,7 @@
-local Map = require("src.map")
-local Raycaster = require("src.raycaster")
-local Sound = require("src.sound")
-local Doors = require("src.doors")
+local Map = require("src.world.map")
+local Raycaster = require("src.render.raycaster")
+local Sound = require("src.audio.sound")
+local Doors = require("src.world.doors")
 
 local AI = {}
 

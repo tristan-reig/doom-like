@@ -1,4 +1,4 @@
-local Map = require("src.map")
+local Map = require("src.world.map")
 
 local Player = {}
 Player.__index = Player

@@ -1,4 +1,4 @@
-local offsets = require("src.sprite_offsets")
+local offsets = require("src.render.sprite_offsets")
 
 local SpriteImages = {}
 

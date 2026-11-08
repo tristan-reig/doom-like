@@ -1,4 +1,4 @@
-local defs = require("src.things.weapons")
+local defs = require("src.data.weapons")
 
 local Weapon = {}
 Weapon.__index = Weapon

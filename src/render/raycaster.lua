@@ -1,6 +1,6 @@
-local Map = require("src.map")
-local Doors = require("src.doors")
-local Lighting = require("src.lighting")
+local Map = require("src.world.map")
+local Doors = require("src.world.doors")
+local Lighting = require("src.render.lighting")
 
 local Raycaster = {}
 
@@ -124,7 +124,7 @@ function Raycaster.load()
         return img
     end
 
-    floorShader = love.graphics.newShader("src/shaders/floor.glsl")
+    floorShader = love.graphics.newShader("src/render/shaders/floor.glsl")
     floorShader:send("floorTex", loadFlat("assets/textures/floor4_8.png"))
     floorShader:send("ceilTex", loadFlat("assets/textures/ceil3_5.png"))
     floorShader:send("camHeight", Map.tileSize / 2)

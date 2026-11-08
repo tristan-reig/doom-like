@@ -1,4 +1,4 @@
-local Pickups = require("src.pickups")
+local Pickups = require("src.player.pickups")
 
 local StatusBar = {}
 

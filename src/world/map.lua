@@ -1,4 +1,4 @@
-local Doors = require("src.doors")
+local Doors = require("src.world.doors")
 
 local Map = {}
 

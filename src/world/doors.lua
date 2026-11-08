@@ -1,4 +1,4 @@
-local Sound = require("src.sound")
+local Sound = require("src.audio.sound")
 
 local Doors = {}
 

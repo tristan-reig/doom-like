@@ -1,10 +1,10 @@
-local Map = require("src.map")
-local Sound = require("src.sound")
-local SpriteImages = require("src.sprite_images")
-local SpriteRender = require("src.sprite_render")
-local Missiles = require("src.missiles")
-local AI = require("src.ai")
-local Noise = require("src.noise")
+local Map = require("src.world.map")
+local Sound = require("src.audio.sound")
+local SpriteImages = require("src.render.sprite_images")
+local SpriteRender = require("src.render.sprite_render")
+local Missiles = require("src.entities.missiles")
+local AI = require("src.entities.ai")
+local Noise = require("src.world.noise")
 
 local Sprites = {}
 
@@ -12,7 +12,7 @@ local TIC = 1 / 35
 
 local typeDefs = {}
 for _, category in ipairs({ "monsters", "projectiles", "items", "decorations" }) do
-    for name, def in pairs(require("src.things." .. category)) do
+    for name, def in pairs(require("src.data." .. category)) do
         assert(not typeDefs[name], "Type défini deux fois : " .. name)
         typeDefs[name] = def
     end

@@ -1,6 +1,6 @@
-local Map = require("src.map")
-local SpriteImages = require("src.sprite_images")
-local Lighting = require("src.lighting")
+local Map = require("src.world.map")
+local SpriteImages = require("src.render.sprite_images")
+local Lighting = require("src.render.lighting")
 
 local SpriteRender = {}
 
