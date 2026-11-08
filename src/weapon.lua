@@ -150,6 +150,12 @@ function Weapon:currentFlash()
     return nil
 end
 
+-- Lumière ajoutée par le flash
+function Weapon:currentLight()
+    local flash = self:currentFlash()
+    return flash and (flash[5] or 1) or 0
+end
+
 function Weapon:draw()
     local w, h = love.graphics.getDimensions()
     local scale = w / 320

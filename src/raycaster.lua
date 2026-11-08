@@ -1,5 +1,6 @@
 local Map = require("src.map")
 local Doors = require("src.doors")
+local Lighting = require("src.lighting")
 
 local Raycaster = {}
 
@@ -139,6 +140,7 @@ local function drawFloorAndCeiling(player, w, h, projDist)
     floorShader:send("right", { -sin, cos })
     floorShader:send("projDist", projDist)
     floorShader:send("halfScreen", { w / 2, h / 2 })
+    floorShader:send("extraLight", Lighting.extra * Lighting.boostPerLevel)
 
     love.graphics.setColor(1, 1, 1)
     love.graphics.setShader(floorShader)
@@ -154,7 +156,7 @@ local doorHits = {}
 -- Dessine une colonne de mur ou de porte.
 local function drawSlice(x, tile, side, wallX, perpDist, top, height, texTop)
     local shade = (side == 1) and 0.7 or 1.0
-    shade = shade * math.max(0.25, 1 - perpDist / Raycaster.fadeDist)
+    shade = shade * Lighting.shade(perpDist, Raycaster.fadeDist)
 
     local tex = textures[tile]
     if tex then

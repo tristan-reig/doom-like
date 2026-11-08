@@ -9,6 +9,7 @@ local Pickups = require("src.pickups")
 local Level = require("src.level")
 local Doors = require("src.doors")
 local StatusBar = require("src.statusbar")
+local Lighting = require("src.lighting")
 
 local levels = {
     "levels/e1m1.txt",
@@ -239,6 +240,7 @@ function love.update(dt)
     StatusBar.update(dt, player, wantFire)
 
     weapon:update(dt, player, wantFire, canFire, onFire)
+    Lighting.extra = weapon:currentLight()
 
     -- Y a-t-il une cible dans le viseur ?
     local centerCol = math.floor(love.graphics.getWidth() / 2)

@@ -1,5 +1,6 @@
 local Map = require("src.map")
 local SpriteImages = require("src.sprite_images")
+local Lighting = require("src.lighting")
 
 local SpriteRender = {}
 
@@ -53,7 +54,7 @@ function SpriteRender.draw(list, typeDefs, player, zbuffer, projDist, fadeDist, 
         local left = centerX - t.offX * pxScale
         local top = floorY - t.offY * pxScale
 
-        local shade = s.frame.bright and 1 or math.max(0.25, 1 - v.depth / fadeDist)
+        local shade = s.frame.bright and 1 or Lighting.shade(v.depth, fadeDist)
         love.graphics.setColor(shade, shade, shade)
 
         local firstCol = math.max(0, math.floor(left))

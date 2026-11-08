@@ -10,6 +10,7 @@ extern vec2 halfScreen;
 extern number camHeight;
 extern number tileSize;
 extern number fadeDist;
+extern number extraLight;
 
 vec4 effect(vec4 color, Image tex, vec2 texCoords, vec2 screenCoords)
 {
@@ -30,6 +31,6 @@ vec4 effect(vec4 color, Image tex, vec2 texCoords, vec2 screenCoords)
     }
 
     // Même assombrissement que les murs
-    number shade = max(0.25, 1.0 - rowDist / fadeDist);
+    number shade = min(1.0, max(0.25, 1.0 - rowDist / fadeDist) + extraLight);
     return vec4(c.rgb * shade, 1.0) * color;
 }
