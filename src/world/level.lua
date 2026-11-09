@@ -93,7 +93,8 @@ function Level.load(path)
     return level
 end
 
-function Level.start(level, player, Sprites)
+function Level.start(level, player, Sprites, monsterRatio)
+    monsterRatio = monsterRatio or 1
     Map.setGrid(level.grid)
 
     -- Créer les portes du niveau
@@ -105,8 +106,14 @@ function Level.start(level, player, Sprites)
     end
 
     Sprites.clear()
+    local monsterCount = 0
     for _, t in ipairs(level.things) do
-        Sprites.add(t.type, t.col, t.row, t.angle)
+        local keep = true
+        if Sprites.getDefByName(t.type).monster then
+            monsterCount = monsterCount + 1
+            keep = math.floor(monsterCount * monsterRatio) > math.floor((monsterCount - 1) * monsterRatio)
+        end
+        if keep then Sprites.add(t.type, t.col, t.row, t.angle) end
     end
     Sprites.countTotals()
 

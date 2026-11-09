@@ -1,8 +1,8 @@
 local Hud = {}
 
 local bigFont, hugeFont, smallFont
-local flash = 0 -- intensité du flash rouge
-local pickupFlash = 0 -- petit flash jaune quand on ramasse un objet
+local flash = 0
+local pickupFlash = 0
 local messageText, messageTime = nil, 0
 
 function Hud.load()
@@ -80,7 +80,7 @@ local function percent(done, total)
     return math.floor(done / total * 100)
 end
 
--- Écran de fin de niveau avec les statistiques
+-- Écran de fin de niveau, avec les statistiques
 function Hud.drawIntermission(info)
     local w, h = love.graphics.getDimensions()
     local previousFont = love.graphics.getFont()
@@ -128,7 +128,7 @@ function Hud.drawVictory()
     love.graphics.printf("VICTOIRE !", 0, h / 2 - 80, w, "center")
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(smallFont)
-    love.graphics.printf("Vous avez terminé tous les niveaux.\nAppuyez sur Espace pour recommencer.", 0, h / 2 + 10, w, "center")
+    love.graphics.printf("Vous avez terminé tous les niveaux.\nAppuyez sur Espace pour revenir au menu.", 0, h / 2 + 10, w, "center")
 
     love.graphics.setFont(previousFont)
 end

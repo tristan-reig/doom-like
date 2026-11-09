@@ -10,6 +10,10 @@ local Level = require("src.world.level")
 local Doors = require("src.world.doors")
 local StatusBar = require("src.ui.statusbar")
 local Lighting = require("src.render.lighting")
+local Menu = require("src.ui.menu")
+local Font = require("src.ui.font")
+local Settings = require("src.settings")
+local skills = require("src.data.skills")
 
 local levels = {
     "levels/e1m1.txt",
@@ -23,13 +27,13 @@ local targetInSight = false
 local wasPressingFire = false
 local weaponDefs = Weapon.defs
 
-local gameState = "playing"
+local gameState = "title"
+local skill = skills[3]
 local levelIndex = 1
 local levelName = ""
 local levelTime = 0
 local exitTimer = 0
 
-local mouseSensitivity = 0.002
 local mouseCaptured = false
 
 local function setMouseCaptured(captured)
@@ -174,13 +178,58 @@ local function use()
     end
 end
 
-function love.load()
+-- Remet le joueur à zéro : santé, armure, armes
+local function resetPlayer()
     player = Player.new(0, 0, 0)
     player.health = 100
     player.dead = false
     player.armor = 0
     player.ammo = { bullets = 50, shells = 0 }
     player.weapons = { pistol = true }
+    player.keys = {}
+    weapon = Weapon.new("pistol")
+end
+
+-- Nouvelle partie, depuis le premier niveau
+local function newGame(skillIndex)
+    skill = skills[skillIndex]
+    Pickups.ammoMultiplier = skill.ammo
+    resetPlayer()
+    startLevel(1)
+    Menu.close()
+    gameState = "playing"
+    setMouseCaptured(true)
+end
+
+local function pause()
+    if gameState ~= "playing" then return end
+    gameState = "paused"
+    setMouseCaptured(false)
+    Menu.open("main", true)
+end
+
+local function resume()
+    Menu.close()
+    gameState = "playing"
+    setMouseCaptured(true)
+end
+
+-- Retour à l'écran titre
+local function goToTitle()
+    resetPlayer()
+    startLevel(1) -- le premier niveau sert de décor
+    gameState = "title"
+    setMouseCaptured(false)
+    Menu.open("main", false)
+end
+
+function love.load()
+    Settings.load()
+    Font.load()
+    Menu.load()
+    Menu.actions.newGame = newGame
+    Menu.actions.resume = resume
+    Menu.actions.quit = function() love.event.quit() end
 
     Hud.load()
     StatusBar.load()
@@ -189,36 +238,42 @@ function love.load()
     Raycaster.load()
     Sprites.load()
     Sound.load()
-    weapon = Weapon.new("pistol")
 
-    startLevel(1)
-    setMouseCaptured(true)
+    goToTitle()
 end
 
 -- Appelée à chaque mouvement de souris
 function love.mousemoved(x, y, dx, dy)
     if mouseCaptured then
-        player.angle = player.angle + dx * mouseSensitivity
+        player.angle = player.angle + dx * Settings.sensitivity
     end
 end
 
 -- Un clic dans la fenêtre recapture la souris
 function love.mousepressed(x, y, button)
-    if not mouseCaptured then
+    if not mouseCaptured and gameState == "playing" then
         setMouseCaptured(true)
     end
 end
 
+-- Si la fenêtre perd le focus (Alt+Tab), on met le jeu en pause
 function love.focus(focused)
     if not focused then
-        setMouseCaptured(false)
+        if gameState == "playing" then pause() else setMouseCaptured(false) end
     end
 end
 
 function love.update(dt)
     Hud.update(dt)
+    Menu.update(dt)
 
-    if gameState == "intermission" or gameState == "victory" then return end
+    -- Écran titre
+    if gameState == "title" then
+        player.angle = player.angle + dt * 0.15
+        return
+    end
+
+    if gameState == "paused" or gameState == "intermission" or gameState == "victory" then return end
 
     if gameState == "exiting" then
         exitTimer = exitTimer - dt
@@ -228,16 +283,17 @@ function love.update(dt)
 
     if not player.dead then
         levelTime = levelTime + dt
+        -- Déplacement, puis on annule ce qui ferait rentrer le joueur dans un objet solide
         local oldX, oldY = player.x, player.y
         player:update(dt)
         Sprites.collide(player, oldX, oldY)
     end
 
-    -- Clic gauche pour tirer
+    -- Tir => clic gauche
     local wantFire = not player.dead and mouseCaptured
         and (love.mouse.isDown(1) or love.keyboard.isDown("lctrl", "rctrl"))
 
-    -- Impossible de tirer sans cartouches
+    -- Changement d'arme si pas de munitions
     if wantFire and weapon.state == "ready" and not canFire(weapon:def()) and not weapon.pending then
         if not wasPressingFire then Sound.play("noAmmo") end
         switchToBestWeapon()
@@ -254,7 +310,6 @@ function love.update(dt)
 
     Sprites.update(dt, player)
 
-    -- Les portes s'ouvrent / se ferment (pas sur le joueur)
     Doors.update(dt, player, Map.tileSize, function(col, row)
         return Sprites.cellOccupied(col, row, player)
     end)
@@ -284,6 +339,12 @@ function love.draw()
     Sprites.draw(player, Raycaster.zbuffer, projDist, Raycaster.fadeDist, Raycaster.doorbuffer, "behind")
     Raycaster.drawDoors()
     Sprites.draw(player, Raycaster.zbuffer, projDist, Raycaster.fadeDist, Raycaster.doorbuffer, "front")
+
+    -- Ecran titre
+    if gameState == "title" then
+        Menu.draw()
+        return
+    end
 
     -- L'arme et le viseur
     if not player.dead then
@@ -323,6 +384,8 @@ function love.draw()
     elseif gameState == "victory" then
         Hud.drawVictory()
     end
+
+    if gameState == "paused" then Menu.draw() end
 end
 
 function love.wheelmoved(x, y)
@@ -332,6 +395,11 @@ function love.wheelmoved(x, y)
 end
 
 function love.keypressed(key, scancode)
+    if Menu.isOpen() then
+        Menu.keypressed(key)
+        return
+    end
+
     local slot = tonumber(scancode)
     if slot and slot >= 1 and slot <= 7 and gameState == "playing" and not player.dead then
         selectSlot(slot)
@@ -339,8 +407,8 @@ function love.keypressed(key, scancode)
     end
 
     if key == "escape" then
-        if mouseCaptured then
-            setMouseCaptured(false)
+        if gameState == "playing" then
+            if gameState == "playing" then pause() end
         else
             love.event.quit()
         end

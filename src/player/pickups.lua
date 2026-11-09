@@ -3,11 +3,12 @@ local Pickups = {}
 Pickups.maxHealth = 100
 Pickups.maxArmor = 100
 Pickups.maxAmmo = { bullets = 200, shells = 50 }
+Pickups.amountMultiplier = 1
 
 -- Ajout de munitions
 local function giveAmmo(p, kind, amount)
     if p.ammo[kind] >= Pickups.maxAmmo[kind] then return false end
-    p.ammo[kind] = math.min(Pickups.maxAmmo[kind], p.ammo[kind] + amount)
+    p.ammo[kind] = math.min(Pickups.maxAmmo[kind], p.ammo[kind] + amount * Pickups.amountMultiplier)
     return true
 end
 

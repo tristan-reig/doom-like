@@ -25,6 +25,7 @@ Fichiers (dossier sounds/ de Freedoom) :
   dswpnup.wav   (arme ramassée)
   dsoof.wav     (porte verrouillée)
   dssgtsit.wav, dssgtatk.wav, dsdmpain.wav, dssgtdth.wav  (démon rose)
+  dspstop.wav, dsstnmov.wav, dsswtchn.wav  (sons du menu)
 
 Ils sont distribués sous la licence BSD de Freedoom, reproduite ci-dessous.
 
