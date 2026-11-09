@@ -11,6 +11,9 @@ local walls = {
     ["C"] = 4, -- caisses
     ["E"] = Map.EXIT, -- interrupteur de sortie
     ["D"] = Map.DOOR, -- porte
+    ["R"] = Map.DOOR_RED, -- porte rouge
+    ["Y"] = Map.DOOR_YELLOW, -- porte jaune
+    ["B"] = Map.DOOR_BLUE, -- porte bleue
 }
 
 -- Objets et monstres
@@ -30,6 +33,9 @@ local things = {
     ["m"] = "ammoBox",
     ["3"] = "shotgunPickup",
     ["4"] = "chaingunPickup",
+    ["r"] = "redKey",
+    ["y"] = "yellowKey",
+    ["u"] = "blueKey",
 }
 
 -- Départ du joueur
@@ -93,7 +99,7 @@ function Level.start(level, player, Sprites)
     Doors.clear()
     for row, line in ipairs(level.grid) do
         for col, tile in ipairs(line) do
-            if tile == Map.DOOR then Doors.add(col, row) end
+            if Map.isDoor(tile) then Doors.add(col, row, Map.doorKeys[tile]) end
         end
     end
 

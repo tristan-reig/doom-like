@@ -11,6 +11,9 @@ Fichiers :
   flats/ceil3_5.png    -> ceil3_5.png
   patches/door2_4.png  -> door2_4.png
 
+  door_red.png, door_yellow.png, door_blue.png : assemblées pour ce projet à partir de
+  patches/door2_4.png et des bandes patches/w108_3.png (rouge), w108_4.png (jaune), w108_2.png (bleue)
+
   exit_off.png et exit_on.png : assemblées pour ce projet à partir de
   patches/wall54_1.png, patches/exit1.png et patches/sw1s0.png / sw1s1.png
 

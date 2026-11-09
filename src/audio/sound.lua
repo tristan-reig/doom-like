@@ -12,6 +12,7 @@ local soundFiles = {
     playerDeath = "assets/sounds/dspldeth.wav",
     itemUp = "assets/sounds/dsitemup.wav",
     weaponUp = "assets/sounds/dswpnup.wav",
+    oof = "assets/sounds/dsoof.wav",
     pistol = "assets/sounds/dspistol.wav",
     noAmmo = "assets/sounds/dsnoway.wav",
     exitSwitch  = "assets/sounds/dsswtchx.wav",

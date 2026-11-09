@@ -68,12 +68,12 @@ function Raycaster.castRay(px, py, angle, forDrawing)
         local row = Map.grid[mapY + 1]
         tile = row and row[mapX + 1] or 1
 
-        if tile == Map.DOOR then
+        if Map.isDoor(tile) then
             local open = Doors.openness(mapX + 1, mapY + 1) or 0
             if forDrawing then
                 if open <= 0 or door then break end
                 local d, wx = impact(side)
-                door = { dist = d * ts, side = side, wallX = wx, open = open }
+                door = { dist = d * ts, side = side, wallX = wx, open = open, tile = tile }
             elseif open < Doors.passable then
                 break -- pas assez ouverte : elle bloque
             end
@@ -95,6 +95,9 @@ local textureFiles = {
     [5] = "assets/textures/exit_off.png",
     [6] = "assets/textures/exit_on.png",
     [7] = "assets/textures/door2_4.png",
+    [8] = "assets/textures/door_red.png",
+    [9] = "assets/textures/door_yellow.png",
+    [10] = "assets/textures/door_blue.png",
 }
 
 -- Pour chaque texture : l'image + un "Quad" par colonne de pixels.
@@ -229,7 +232,7 @@ function Raycaster.drawDoors()
             local top = halfH - wallH / 2
             local visible = wallH * (1 - d.open)
             if visible > 0 then
-                drawSlice(x, Map.DOOR, d.side, d.wallX, d.perpDist, top, visible, d.open)
+                drawSlice(x, d.tile, d.side, d.wallX, d.perpDist, top, visible, d.open)
             end
         end
     end

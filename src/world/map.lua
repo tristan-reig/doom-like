@@ -7,6 +7,19 @@ Map.tileSize = 64
 Map.EXIT = 5
 Map.EXIT_ON = 6
 Map.DOOR = 7
+Map.DOOR_RED = 8
+Map.DOOR_YELLOW = 9
+Map.DOOR_BLUE = 10
+
+Map.doorKeys = {
+    [Map.DOOR_RED] = "red",
+    [Map.DOOR_YELLOW] = "yellow",
+    [Map.DOOR_BLUE] = "blue",
+}
+
+function Map.isDoor(tile)
+    return tile == Map.DOOR or Map.doorKeys[tile] ~= nil
+end
 
 Map.grid = { { 1 } }
 Map.rows = 1
@@ -43,7 +56,7 @@ end
 
 function Map.isWall(x, y)
     local tile = Map.getTileAt(x, y)
-    if tile == Map.DOOR then
+    if Map.isDoor(tile) then
         local col, row = Map.cellAt(x, y)
         return not Doors.isPassable(col, row)
     end
@@ -58,6 +71,9 @@ Map.colors = {
     [5] = {0.90, 0.10, 0.10},
     [6] = {0.10, 0.90, 0.10},
     [7] = {0.80, 0.70, 0.30},
+    [8] = {1.00, 0.20, 0.20},
+    [9] = {1.00, 0.90, 0.20},
+    [10] = {0.30, 0.40, 1.00},
 }
 
 -- Dessin vue de dessus
@@ -67,7 +83,7 @@ function Map.draw(scale)
     for row = 1, Map.rows do
         for col = 1, Map.cols do
             local tile = Map.grid[row][col]
-            if tile == Map.DOOR and Doors.isPassable(col, row) then tile = 0 end
+            if Map.isDoor(tile) and Doors.isPassable(col, row) then tile = 0 end
             if tile ~= 0 then
                 love.graphics.setColor(Map.colors[tile] or {1, 1, 1})
             else

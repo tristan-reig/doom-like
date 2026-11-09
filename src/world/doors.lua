@@ -12,10 +12,10 @@ function Doors.clear()
     Doors.list = {}
 end
 
-function Doors.add(col, row)
+function Doors.add(col, row, key)
     Doors.list[row] = Doors.list[row] or {}
     Doors.list[row][col] = {
-        col = col, row = row,
+        col = col, row = row, key = key,
         open = 0,
         state = "closed",
         timer = 0,
@@ -44,6 +44,11 @@ end
 function Doors.use(col, row, player, tileSize, byMonster)
     local d = Doors.get(col, row)
     if not d then return false end
+
+    if d.key and d.state == "closed" then
+        if byMonster then return false end
+        if not (player.keys and player.keys[d.key]) then return false, "locked", d.key end
+    end
 
     if d.state == "closed" or d.state == "closing" then
         d.state = "opening"

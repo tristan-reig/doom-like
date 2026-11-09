@@ -107,6 +107,7 @@ function StatusBar.update(dt, player, firing)
     end
     face.hurtTimer = math.max(0, face.hurtTimer - dt)
     face.ouchTimer = math.max(0, face.ouchTimer - dt)
+    face.evilTimer = math.max(0, face.evilTimer - dt)
     face.fireTime = firing and (face.fireTime + dt) or 0
 end
 
@@ -176,6 +177,13 @@ function StatusBar.draw(player, ownedWeapons, currentAmmo)
     local name = faceImage(player)
     local off = faceOffsets[name] or { 0, 0 }
     draw(name, 143 - off[1], 168 - off[2], s, ox, oy)
+
+    -- Affichage des cartes
+    if player.keys then
+        if player.keys.blue then draw("stkeys0", 239, 171, s, ox, oy) end
+        if player.keys.yellow then draw("stkeys1", 239, 181, s, ox, oy) end
+        if player.keys.red then draw("stkeys2", 239, 191, s, ox, oy) end
+    end
 
     -- Tableau des munitions
     local ammo = {

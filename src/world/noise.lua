@@ -10,7 +10,7 @@ local function soundPasses(col, row)
     local tile = Map.grid[row] and Map.grid[row][col]
     if tile == nil then return false end
     if tile == 0 then return true end
-    if tile == Map.DOOR then
+    if Map.isDoor(tile) then
         local open = Doors.openness(col, row)
         return open ~= nil and open > 0
     end

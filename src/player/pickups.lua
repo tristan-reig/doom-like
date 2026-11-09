@@ -63,6 +63,20 @@ local effects = {
         return "Vous avez ramassé une boîte de cartouches."
     end,
 
+    -- Cartes d'accès
+    redKey = function(p)
+        p.keys.red = true
+        return "Vous avez la carte rouge."
+    end,
+    yellowKey = function(p)
+        p.keys.yellow = true
+        return "Vous avez la carte jaune."
+    end,
+    blueKey = function(p)
+        p.keys.blue = true
+        return "Vous avez la carte bleue."
+    end,
+
     shotgun = function(p, dropped)
         local taken, isNew = giveWeapon(p, "shotgun", "shells", dropped and 4 or 8)
         if not taken then return nil end

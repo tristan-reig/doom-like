@@ -127,6 +127,7 @@ end
 -- Charge et démarre le niveau
 local function startLevel(index)
     levelIndex = index
+    player.keys = {}
     local level = Level.load(levels[index])
     Level.start(level, player, Sprites)
     levelName = level.name
@@ -154,9 +155,14 @@ local function use()
     if dist >= USE_RANGE then return end
 
     -- Porte fermée
-    if tile == Map.DOOR then
+    if Map.isDoor(tile) then
         local col, row = Map.cellAt(pointAhead(dist))
-        Doors.use(col, row, player, Map.tileSize)
+        local _, reason, key = Doors.use(col, row, player, Map.tileSize)
+        if reason == "locked" then
+            local names = { red = "rouge", yellow = "jaune", blue = "bleue" }
+            Hud.message("Il vous faut la carte " .. names[key] .. " pour ouvrir cette porte.")
+            Sound.play("oof")
+        end
 
     -- L'interrupteur de sortie
     elseif tile == Map.EXIT then

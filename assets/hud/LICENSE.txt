@@ -3,7 +3,7 @@ https://freedoom.github.io
 https://github.com/freedoom/freedoom
 
 Fichiers : dossier graphics/ de Freedoom (stbar, starms, sttnum*, sttprcnt,
-stysnum*, stgnum*, stfst*, stftl*, stftr*, stfouch*, stfkill*, stfevl*, stfdead0).
+stysnum*, stgnum*, stfst*, stftl*, stftr*, stfouch*, stfkill*, stfevl*, stfdead0, stkeys0-2).
 
 Elles sont distribuées sous la licence BSD de Freedoom, reproduite ci-dessous.
 
