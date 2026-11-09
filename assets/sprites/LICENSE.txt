@@ -15,6 +15,7 @@ Fichiers (dossier sprites/ de Freedoom) :
   shela0.png, sboxa0.png   (cartouches, boîte de cartouches)
   arm1a0.png, arm1b0.png   (armure)
   trooa1.png à troou0.png  (imp)
+  sarga1.png à sargn0.png  (démon rose)
   bal1a0.png à bal1e0.png  (boule de feu)
   pisga0.png à pisgc0.png, pisfa0.png  (pistolet)
   chgga0.png, chggb0.png, chgfa0.png, chgfb0.png  (mitrailleuse)

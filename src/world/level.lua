@@ -20,6 +20,7 @@ local walls = {
 local things = {
     ["Z"] = "zombie",
     ["I"] = "imp",
+    ["X"] = "demon",
     ["b"] = "barrel",
     ["l"] = "lamp",
     ["L"] = "tallLamp",

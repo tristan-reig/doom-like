@@ -38,6 +38,37 @@ return {
         },
     },
 
+    demon = {
+        health = 150, radius = 15, solid = true, painChance = 180 / 256,
+        monster = true, speed = 87, meleeRange = 34,
+        sightSound = "demonSight", attackSound = "demonAttack",
+        states = {
+            idle = { { "sarga", 10, action = "look" }, { "sargb", 10, action = "look" }, loop = true },
+            chase = {
+                { "sarga", 2, action = "chase" }, { "sarga", 2, action = "chase" },
+                { "sargb", 2, action = "chase" }, { "sargb", 2, action = "chase" },
+                { "sargc", 2, action = "chase" }, { "sargc", 2, action = "chase" },
+                { "sargd", 2, action = "chase" }, { "sargd", 2, action = "chase" },
+                loop = true,
+            },
+            melee = {
+                { "sarge", 8, action = "face" },
+                { "sargf", 8, action = "face" },
+                { "sargg", 8, action = "bite" },
+                next = "chase",
+            },
+            pain = { { "sargh", 2 }, { "sargh", 2, sound = "demonPain" }, next = "chase" },
+            death = {
+                { "sargi0", 8 },
+                { "sargj0", 8, sound = "demonDeath" },
+                { "sargk0", 4 },
+                { "sargl0", 4, notSolid = true },
+                { "sargm0", 4 },
+                { "sargn0", -1 },
+            },
+        },
+    },
+
     imp = {
         health = 60, radius = 10, solid = true, painChance = 200 / 256,
         monster = true, speed = 35, meleeRange = 34,

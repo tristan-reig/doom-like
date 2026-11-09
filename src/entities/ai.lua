@@ -156,6 +156,16 @@ function AI.actions.chase(s, player, Sprites)
     if s.reactionTime > 0 then s.reactionTime = s.reactionTime - 1 end
 
     local def = Sprites.getDef(s)
+
+    local meleeState = def.states.melee and "melee" or (def.states.missile and "missile")
+    if def.meleeRange and meleeState and AI.canSee(s, player)
+        and distance(s.x, s.y, player.x, player.y) < def.meleeRange + (player.radius or 12) then
+        s.moveDir = nil
+        if def.attackSound then Sound.playAt(def.attackSound, s.x, s.y, player) end
+        Sprites.setState(s, meleeState, player)
+        return
+    end
+
     if def.states.missile and s.reactionTime <= 0
         and AI.canSee(s, player) and wantsToShoot(s, player) then
         s.moveDir = nil
@@ -198,6 +208,15 @@ function AI.actions.impAttack(s, player, Sprites)
     else
         Sound.playAt("fireballShoot", s.x, s.y, player)
         Sprites.spawnMissile("fireball", s, player.x, player.y)
+    end
+end
+
+function AI.actions.bite(s, player, Sprites)
+    AI.actions.face(s, player)
+    if player.dead then return end
+    local def = Sprites.getDef(s)
+    if distance(s.x, s.y, player.x, player.y) < def.meleeRange + (player.radius or 12) then
+        if Sprites.onPlayerHit then Sprites.onPlayerHit(4 * math.random(1, 10), s) end
     end
 end
 
