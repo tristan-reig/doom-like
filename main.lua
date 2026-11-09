@@ -369,7 +369,6 @@ function love.draw()
     local w = love.graphics.getWidth()
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.printf("FPS: " .. love.timer.getFPS(), 0, 40, w - 10, "right")
-    love.graphics.printf("ZQSD : bouger   Souris : tourner   Clic/Ctrl : tirer   E : utiliser\nTab : minimap   Échap : souris / quitter", 0, 58, w - 10, "right")
 
     -- Écrans de fin
     if gameState == "intermission" then
